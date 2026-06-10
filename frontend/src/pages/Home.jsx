@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import useThemeMode from '../hooks/useThemeMode';
 import '../components/HeroSection.css';
 import HeroSection from '../components/HeroSection';
-import { getRecentPublicUsers } from '../utils/api';
+import { getRecentPublicUsers, getPublicTestimonials } from '../utils/api';
 import { motion } from 'framer-motion';
 import { 
   ArrowRight, BookOpen, BrainCircuit, Rocket, LineChart, Laptop, Target, UserCheck, Calculator, Globe, 
@@ -30,6 +30,7 @@ export default function Home() {
   const isDarkMode = useThemeMode();
   const [totalUsers, setTotalUsers] = useState('10k+');
   const [recentUsers, setRecentUsers] = useState([]);
+  const [testimonials, setTestimonials] = useState([]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [activeRole, setActiveRole] = useState('learner');
   const [latestPublicUser, setLatestPublicUser] = useState(null);
@@ -177,6 +178,16 @@ export default function Home() {
       }
     };
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      const data = await getPublicTestimonials();
+      if (data && data.success && data.testimonials) {
+        setTestimonials(data.testimonials);
+      }
+    };
+    fetchTestimonials();
   }, []);
 
 
@@ -1541,14 +1552,26 @@ export default function Home() {
             </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               {[
+               {(testimonials.length > 0 ? testimonials : [
                  { role: "Learner", icon: GraduationCap, quote: "EDOT gave me access to learning I couldn't find before. Now I understand and apply what I learn." },
                  { role: "Parent", icon: Users, quote: "I can clearly see my child's progress and growth, not just results, but real understanding." },
                  { role: "Instructor", icon: BookOpen, quote: "This platform allows me to truly guide learners, not just upload content." },
                  { role: "Sponsor", icon: Heart, quote: "I can see exactly who I'm helping and how they are improving." }
-               ].map((test, idx) => (
+               ]).map((test, idx) => {
+                 const roleIconMap = {
+                   'Learner': GraduationCap,
+                   'Parent': Users,
+                   'Instructor': BookOpen,
+                   'Sponsor': Heart
+                 };
+                 const IconComponent = roleIconMap[test.role] || GraduationCap;
+                 const testAvatar = test.avatar && test.avatar !== 'default-avatar.png' 
+                   ? test.avatar
+                   : null;
+
+                 return (
                   <motion.div
-                     key={idx}
+                     key={test.id || idx}
                      initial={{ opacity: 0, y: 30 }}
                      whileInView={{ opacity: 1, y: 0 }}
                      transition={{ delay: idx * 0.1, duration: 0.6 }}
@@ -1559,13 +1582,21 @@ export default function Home() {
                      <Quote className="absolute top-8 right-8 w-16 h-16 text-[#00D4FF] opacity-10 group-hover:opacity-20 transition-opacity duration-300" />
                      <p className={`text-2xl font-medium italic leading-relaxed mb-10 relative z-10 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>"{test.quote}"</p>
                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#e66a00] flex items-center justify-center text-white shadow-md">
-                           <test.icon className="w-6 h-6" />
+                        {testAvatar ? (
+                          <img src={testAvatar} alt={test.name} className="w-14 h-14 rounded-full object-cover shadow-md" />
+                        ) : (
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#e66a00] flex items-center justify-center text-white shadow-md">
+                             <IconComponent className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div>
+                          <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{test.name}</p>
+                          <span className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{test.role}</span>
                         </div>
-                        <span className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{test.role}</span>
                      </div>
                   </motion.div>
-               ))}
+                 );
+               })}
             </div>
          </div>
       </section>

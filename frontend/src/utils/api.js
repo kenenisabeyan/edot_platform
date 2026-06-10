@@ -49,6 +49,15 @@ export const getRecentPublicUsers = async () => {
     }
 };
 
+export const getPublicTestimonials = async () => {
+    try {
+        const { data } = await api.get('/users/public/testimonials');
+        return data;
+    } catch {
+        return null;
+    }
+};
+
 export const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append('image', file);

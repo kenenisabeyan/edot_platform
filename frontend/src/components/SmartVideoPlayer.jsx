@@ -59,7 +59,7 @@ export default function SmartVideoPlayer({ url, controls = true, playing = false
     
     if (ytId) {
       return (
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-gray-800">
+        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border-2 border-[#00D4FF]/60" style={{boxShadow: '0 0 20px rgba(0, 212, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.5)'}}>
           <iframe
             width="100%"
             height="100%"
@@ -76,7 +76,7 @@ export default function SmartVideoPlayer({ url, controls = true, playing = false
   }
 
   return (
-    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-gray-800 flex items-center justify-center">
+    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border-2 border-[#00D4FF]/60 flex items-center justify-center" style={{boxShadow: '0 0 20px rgba(0, 212, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.5)'}}>
       <video
         src={resolvedUrl}
         controls={controls}

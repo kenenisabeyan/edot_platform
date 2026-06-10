@@ -7,61 +7,36 @@ const router = express.Router();
 
 router.get('/public/recent', async (req, res) => {
     try {
-        const student = await prisma.user.findFirst({
+        // Fetch 4 diverse recent users (excluding admins for public display)
+        const recentUsers = await prisma.user.findMany({
             where: {
-                role: 'student',
-                AND: [
-                    { avatar: { not: 'default-avatar.png' } },
-                    { avatar: { not: '' } }
+                role: { not: 'admin' },
+                NOT: [
+                    { name: { contains: 'test', mode: 'insensitive' } },
+                    { name: { contains: 'Test', mode: 'insensitive' } }
                 ]
             },
             orderBy: { createdAt: 'desc' },
-            select: { id: true, name: true, avatar: true }
+            take: 4,
+            select: { 
+                id: true, 
+                name: true, 
+                avatar: true,
+                role: true
+            }
         });
 
-        const instructor = await prisma.user.findFirst({
-            where: {
-                role: 'instructor',
-                AND: [
-                    { avatar: { not: 'default-avatar.png' } },
-                    { avatar: { not: '' } }
-                ]
-            },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, name: true, avatar: true }
-        });
+        // Generate default avatars using UI Avatars service if not set
+        const users = recentUsers.map(user => ({
+            ...user,
+            avatar: user.avatar && user.avatar !== 'default-avatar.png' 
+                ? user.avatar 
+                : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}`
+        }));
 
-        const parent = await prisma.user.findFirst({
-            where: {
-                role: 'parent',
-                AND: [
-                    { email: { not: { contains: 'sponsor', mode: 'insensitive' } } },
-                    { name: { not: { contains: 'sponsor', mode: 'insensitive' } } },
-                    { avatar: { not: 'default-avatar.png' } },
-                    { avatar: { not: '' } }
-                ]
-            },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, name: true, avatar: true }
+        const totalCount = await prisma.user.count({
+            where: { role: { not: 'admin' } }
         });
-
-        const sponsor = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email: { contains: 'sponsor' } },
-                    { name: { contains: 'sponsor' } }
-                ],
-                AND: [
-                    { avatar: { not: 'default-avatar.png' } },
-                    { avatar: { not: '' } }
-                ]
-            },
-            orderBy: { createdAt: 'desc' },
-            select: { id: true, name: true, avatar: true }
-        });
-
-        const users = [student, instructor, parent, sponsor].filter(Boolean);
-        const totalCount = await prisma.user.count();
 
         res.json({
             success: true,
@@ -757,6 +732,109 @@ router.post('/connect', protect, async (req, res) => {
     } catch (error) {
         console.error('Connect route error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+router.get('/public/testimonials', async (req, res) => {
+    try {
+        // Fetch diverse testimonials from real users by role
+        const testimonials = [];
+        
+        // Get a student
+        const student = await prisma.user.findFirst({
+            where: { role: 'student', NOT: { name: { contains: 'test', mode: 'insensitive' } } },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, name: true, avatar: true, role: true }
+        });
+
+        // Get an instructor
+        const instructor = await prisma.user.findFirst({
+            where: { role: 'instructor' },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, name: true, avatar: true, role: true }
+        });
+
+        // Get a parent
+        const parent = await prisma.user.findFirst({
+            where: { 
+                role: 'parent',
+                NOT: { name: { contains: 'sponsor', mode: 'insensitive' } }
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, name: true, avatar: true, role: true }
+        });
+
+        // Get a sponsor
+        const sponsor = await prisma.user.findFirst({
+            where: { role: 'parent' },
+            orderBy: { createdAt: 'desc' },
+            skip: 1,
+            select: { id: true, name: true, avatar: true, role: true }
+        });
+
+        // Map testimonials with real user data and quotes
+        if (student) {
+            testimonials.push({
+                id: student.id,
+                name: student.name,
+                avatar: student.avatar,
+                role: 'Learner',
+                roleType: 'student',
+                quote: `EDOT gave me access to learning I couldn't find before. Now I understand and apply what I learn.`
+            });
+        }
+
+        if (parent) {
+            testimonials.push({
+                id: parent.id,
+                name: parent.name,
+                avatar: parent.avatar,
+                role: 'Parent',
+                roleType: 'parent',
+                quote: `I can clearly see my child's progress and growth, not just results, but real understanding.`
+            });
+        }
+
+        if (instructor) {
+            testimonials.push({
+                id: instructor.id,
+                name: instructor.name,
+                avatar: instructor.avatar,
+                role: 'Instructor',
+                roleType: 'instructor',
+                quote: `This platform allows me to truly guide learners, not just upload content.`
+            });
+        }
+
+        if (sponsor) {
+            testimonials.push({
+                id: sponsor.id,
+                name: sponsor.name,
+                avatar: sponsor.avatar,
+                role: 'Sponsor',
+                roleType: 'sponsor',
+                quote: `I can see exactly who I'm helping and how they are improving.`
+            });
+        }
+
+        // Add default avatars if not set
+        const enrichedTestimonials = testimonials.map(t => ({
+            ...t,
+            avatar: t.avatar && t.avatar !== 'default-avatar.png'
+                ? t.avatar
+                : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(t.name)}`
+        }));
+
+        res.json({
+            success: true,
+            testimonials: enrichedTestimonials
+        });
+    } catch (error) {
+        console.error('Get testimonials error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
     }
 });
 

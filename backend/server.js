@@ -33,7 +33,6 @@ import sponsorRoutes from './routes/sponsorRoutes.js';
 import connectionRoutes from './routes/connectionRoutes.js';
 import materialRoutes from './routes/materialRoutes.js';
 import quizRoutes from './routes/quizRoutes.js';
-import newDashboardRoutes from './routes/newDashboardRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import liveClassRoutes from './routes/liveClassRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
@@ -108,10 +107,9 @@ app.use('/api/connections', connectionRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/live-classes', liveClassRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/dashboard', dashboardRoutes); // Consolidated dashboard routes (replaces oldDashboardRoutes & newDashboardRoutes)
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/chatbot', chatbotRoutes);
-app.use('/api', newDashboardRoutes);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -139,9 +137,43 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
-httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT} with WebSockets`));
+httpServer.on('error', (error) => {
+  if (error.syscall !== 'listen') {
+    console.error('Server error:', error);
+    process.exit(1);
+  }
 
-// Trigger nodemon restart
+  const bind = typeof PORT === 'string'
+    ? `Pipe ${PORT}`
+    : `Port ${PORT}`;
+
+  if (error.code === 'EADDRINUSE') {
+    console.error(`${bind} is already in use. Please stop the running process or set a different PORT.`);
+    process.exit(1);
+  }
+
+  console.error(error);
+  process.exit(1);
+});
+
+const serverInstance = httpServer.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT} with WebSockets`);
+});
+
+function shutdown(signal) {
+  console.log(`Received ${signal}. Closing server...`);
+  serverInstance.close(() => {
+    console.log('Server closed.');
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
 

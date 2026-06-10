@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, Suspense, lazy } from 'react';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { io } from 'socket.io-client';
 import Navbar from './components/Navbar';
@@ -8,59 +8,83 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 import useThemeMode from './hooks/useThemeMode';
 
+// Keep lightweight pages in main bundle
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import AdminDashboard from './pages/AdminDashboard';
-import InstructorDashboard from './pages/InstructorDashboard';
-import InstructorCourseBuilder from './pages/InstructorCourseBuilder';
-import StudentDashboard from './pages/StudentDashboard';
-import Courses from './pages/Courses';
-import CourseDetails from './pages/CourseDetails';
-import Lesson from './pages/Lesson';
-import QuizViewer from './pages/QuizViewer';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Impact from './pages/Impact';
 import Sponsorship from './pages/Sponsorship';
+import VerifyCertificate from './pages/VerifyCertificate';
+import Courses from './pages/Courses';
 import { useAuth } from './context/AuthContext';
 
 import EDOTLayout from './components/EDOTLayout';
-import EDOTDashboard from './pages/EDOTDashboard';
-import TeachersList from './pages/TeachersList';
-import StudentsList from './pages/StudentsList';
-import FinanceFees from './pages/FinanceFees';
-import FinanceExpenses from './pages/FinanceExpenses';
-import CalendarView from './pages/CalendarView';
-import MessagesView from './pages/MessagesView';
-import StudentCourses from './pages/StudentCourses';
-import InstructorClasses from './pages/InstructorClasses';
-import InstructorManageCourses from './pages/InstructorManageCourses';
-import AdminCourseApprovals from './pages/AdminCourseApprovals';
-import CertificatesView from './pages/CertificatesView';
-import NoticeView from './pages/NoticeView';
-import LibraryView from './pages/LibraryView';
-import ProfileView from './pages/ProfileView';
-import ParentLearners from './pages/ParentLearners';
-import AttendanceManagement from './pages/AttendanceManagement';
-import Revenue from './pages/Revenue';
-import Performance from './pages/Performance';
-import TeachingActivity from './pages/TeachingActivity';
-import AnalyticsReport from './pages/AnalyticsReport';
-import SettingsView from './pages/SettingsView';
-import VerifyCertificate from './pages/VerifyCertificate';
-import UsersManagement from './pages/UsersManagement';
-import SectionManagement from './pages/SectionManagement';
-import SupportDashboard from './pages/SupportDashboard';
-import SponsorDashboard from './pages/SponsorDashboard';
-import LiveClassesView from './pages/LiveClassesView';
-import EcosystemView from './pages/EcosystemView';
-import StudyGoalView from './pages/StudyGoalView';
-import AchievementsView from './pages/AchievementsView';
-import { Outlet } from 'react-router-dom';
+
+// Lazy load heavy dashboard and management pages
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const InstructorDashboard = lazy(() => import('./pages/InstructorDashboard'));
+const InstructorCourseBuilder = lazy(() => import('./pages/InstructorCourseBuilder'));
+const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
+const CourseDetails = lazy(() => import('./pages/CourseDetails'));
+const Lesson = lazy(() => import('./pages/Lesson'));
+const QuizViewer = lazy(() => import('./pages/QuizViewer'));
+
+// Lazy load dashboard management pages
+const EDOTDashboard = lazy(() => import('./pages/EDOTDashboard'));
+const TeachersList = lazy(() => import('./pages/TeachersList'));
+const StudentsList = lazy(() => import('./pages/StudentsList'));
+const FinanceFees = lazy(() => import('./pages/FinanceFees'));
+const FinanceExpenses = lazy(() => import('./pages/FinanceExpenses'));
+const CalendarView = lazy(() => import('./pages/CalendarView'));
+const MessagesView = lazy(() => import('./pages/MessagesView'));
+const StudentCourses = lazy(() => import('./pages/StudentCourses'));
+const InstructorClasses = lazy(() => import('./pages/InstructorClasses'));
+const InstructorManageCourses = lazy(() => import('./pages/InstructorManageCourses'));
+const AdminCourseApprovals = lazy(() => import('./pages/AdminCourseApprovals'));
+const CertificatesView = lazy(() => import('./pages/CertificatesView'));
+const NoticeView = lazy(() => import('./pages/NoticeView'));
+const LibraryView = lazy(() => import('./pages/LibraryView'));
+const ProfileView = lazy(() => import('./pages/ProfileView'));
+const ParentLearners = lazy(() => import('./pages/ParentLearners'));
+const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement'));
+const Revenue = lazy(() => import('./pages/Revenue'));
+const Performance = lazy(() => import('./pages/Performance'));
+const TeachingActivity = lazy(() => import('./pages/TeachingActivity'));
+const AnalyticsReport = lazy(() => import('./pages/AnalyticsReport'));
+const SettingsView = lazy(() => import('./pages/SettingsView'));
+const UsersManagement = lazy(() => import('./pages/UsersManagement'));
+const SectionManagement = lazy(() => import('./pages/SectionManagement'));
+const SupportDashboard = lazy(() => import('./pages/SupportDashboard'));
+const SponsorDashboard = lazy(() => import('./pages/SponsorDashboard'));
+const LiveClassesView = lazy(() => import('./pages/LiveClassesView'));
+const EcosystemView = lazy(() => import('./pages/EcosystemView'));
+const StudyGoalView = lazy(() => import('./pages/StudyGoalView'));
+const AchievementsView = lazy(() => import('./pages/AchievementsView'));
 
 import ErrorBoundary from './components/ErrorBoundary';
 import ChatbotWidget from './components/ChatbotWidget';
+
+/**
+ * Loading Fallback Component
+ * Displayed while lazy-loaded routes are being loaded
+ * Improves perceived performance with skeleton UI
+ */
+function LazyLoadingFallback() {
+  const isDarkMode = useThemeMode();
+  
+  return (
+    <div className={`flex items-center justify-center min-h-screen ${isDarkMode ? 'bg-[#0B1120]' : 'bg-white'}`}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-transparent border-t-sky-500 rounded-full animate-spin"></div>
+        <p className={`text-sm font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+          Loading page...
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function MainLayout() {
   const isDarkMode = useThemeMode();
@@ -179,12 +203,16 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/lesson/:id" element={
           <ErrorBoundary>
-            <Lesson />
+            <Suspense fallback={<LazyLoadingFallback />}>
+              <Lesson />
+            </Suspense>
           </ErrorBoundary>
         } />
         <Route path="/quiz/:id" element={
           <ErrorBoundary>
-            <QuizViewer />
+            <Suspense fallback={<LazyLoadingFallback />}>
+              <QuizViewer />
+            </Suspense>
           </ErrorBoundary>
         } />
       </Route>
@@ -198,7 +226,11 @@ export default function App() {
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/courses" element={<Courses />} />
-        <Route path="/course/:id" element={<CourseDetails />} />
+        <Route path="/course/:id" element={
+          <Suspense fallback={<LazyLoadingFallback />}>
+            <CourseDetails />
+          </Suspense>
+        } />
         <Route path="/about" element={<About />} />
         <Route path="/impact" element={<Impact />} />
         <Route path="/sponsorship" element={<Sponsorship />} />
@@ -225,65 +257,65 @@ export default function App() {
           <ProtectedRoute />
         </ErrorBoundary>
       }>
-        <Route element={<EDOTLayout />}>
-          <Route index element={<EDOTDashboard />} />
+        <Route element={<Suspense fallback={<LazyLoadingFallback />}><EDOTLayout /></Suspense>}>
+          <Route index element={<Suspense fallback={<LazyLoadingFallback />}><EDOTDashboard /></Suspense>} />
           
           {/* Admin Only Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="users" element={<UsersManagement />} />
-            <Route path="teachers" element={<TeachersList />} />
-            <Route path="approvals" element={<AdminCourseApprovals />} />
-            <Route path="revenue" element={<Revenue />} />
-            <Route path="analytics" element={<AnalyticsReport />} />
-            <Route path="finance/fees" element={<FinanceFees />} />
-            <Route path="finance/expenses" element={<FinanceExpenses />} />
+            <Route path="users" element={<Suspense fallback={<LazyLoadingFallback />}><UsersManagement /></Suspense>} />
+            <Route path="teachers" element={<Suspense fallback={<LazyLoadingFallback />}><TeachersList /></Suspense>} />
+            <Route path="approvals" element={<Suspense fallback={<LazyLoadingFallback />}><AdminCourseApprovals /></Suspense>} />
+            <Route path="revenue" element={<Suspense fallback={<LazyLoadingFallback />}><Revenue /></Suspense>} />
+            <Route path="analytics" element={<Suspense fallback={<LazyLoadingFallback />}><AnalyticsReport /></Suspense>} />
+            <Route path="finance/fees" element={<Suspense fallback={<LazyLoadingFallback />}><FinanceFees /></Suspense>} />
+            <Route path="finance/expenses" element={<Suspense fallback={<LazyLoadingFallback />}><FinanceExpenses /></Suspense>} />
           </Route>
 
           {/* Admin & Instructor Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin', 'instructor']} />}>
-            <Route path="classes" element={<InstructorClasses />} />
-            <Route path="my-courses" element={<InstructorManageCourses />} />
-            <Route path="builder" element={<InstructorCourseBuilder />} />
-            <Route path="builder/:id" element={<InstructorCourseBuilder />} />
-            <Route path="teaching" element={<TeachingActivity />} />
+            <Route path="classes" element={<Suspense fallback={<LazyLoadingFallback />}><InstructorClasses /></Suspense>} />
+            <Route path="my-courses" element={<Suspense fallback={<LazyLoadingFallback />}><InstructorManageCourses /></Suspense>} />
+            <Route path="builder" element={<Suspense fallback={<LazyLoadingFallback />}><InstructorCourseBuilder /></Suspense>} />
+            <Route path="builder/:id" element={<Suspense fallback={<LazyLoadingFallback />}><InstructorCourseBuilder /></Suspense>} />
+            <Route path="teaching" element={<Suspense fallback={<LazyLoadingFallback />}><TeachingActivity /></Suspense>} />
           </Route>
 
           {/* Admin, Instructor, Student (Shared with internal logic vs strict role blocks) */}
-          <Route path="students" element={<StudentsList />} />
-          <Route path="attendance" element={<AttendanceManagement />} />
-          <Route path="performance" element={<Performance />} />
-          <Route path="sections" element={<SectionManagement />} />
+          <Route path="students" element={<Suspense fallback={<LazyLoadingFallback />}><StudentsList /></Suspense>} />
+          <Route path="attendance" element={<Suspense fallback={<LazyLoadingFallback />}><AttendanceManagement /></Suspense>} />
+          <Route path="performance" element={<Suspense fallback={<LazyLoadingFallback />}><Performance /></Suspense>} />
+          <Route path="sections" element={<Suspense fallback={<LazyLoadingFallback />}><SectionManagement /></Suspense>} />
           
           {/* Parent Only Routes */}
           <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
-            <Route path="child" element={<ParentLearners />} />
-            <Route path="progress" element={<ParentLearners />} />
+            <Route path="child" element={<Suspense fallback={<LazyLoadingFallback />}><ParentLearners /></Suspense>} />
+            <Route path="progress" element={<Suspense fallback={<LazyLoadingFallback />}><ParentLearners /></Suspense>} />
           </Route>
 
           {/* Student Only Routes */}
           <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-            <Route path="courses" element={<StudentCourses />} />
+            <Route path="courses" element={<Suspense fallback={<LazyLoadingFallback />}><StudentCourses /></Suspense>} />
           </Route>
 
           {/* General Dashboard Routes available to anyone logged in */}
-          <Route path="support" element={<SupportDashboard />} />
-          <Route path="notice" element={<NoticeView />} />
-          <Route path="calendar" element={<CalendarView />} />
-          <Route path="schedule" element={<CalendarView />} />
-          <Route path="library" element={<LibraryView />} />
-          <Route path="messages" element={<MessagesView />} />
-          <Route path="certificates" element={<CertificatesView />} />
-          <Route path="study-goal" element={<StudyGoalView />} />
-          <Route path="achievements" element={<AchievementsView />} />
-          <Route path="profile" element={<ProfileView />} />
-          <Route path="live-classes" element={<LiveClassesView />} />
+          <Route path="support" element={<Suspense fallback={<LazyLoadingFallback />}><SupportDashboard /></Suspense>} />
+          <Route path="notice" element={<Suspense fallback={<LazyLoadingFallback />}><NoticeView /></Suspense>} />
+          <Route path="calendar" element={<Suspense fallback={<LazyLoadingFallback />}><CalendarView /></Suspense>} />
+          <Route path="schedule" element={<Suspense fallback={<LazyLoadingFallback />}><CalendarView /></Suspense>} />
+          <Route path="library" element={<Suspense fallback={<LazyLoadingFallback />}><LibraryView /></Suspense>} />
+          <Route path="messages" element={<Suspense fallback={<LazyLoadingFallback />}><MessagesView /></Suspense>} />
+          <Route path="certificates" element={<Suspense fallback={<LazyLoadingFallback />}><CertificatesView /></Suspense>} />
+          <Route path="study-goal" element={<Suspense fallback={<LazyLoadingFallback />}><StudyGoalView /></Suspense>} />
+          <Route path="achievements" element={<Suspense fallback={<LazyLoadingFallback />}><AchievementsView /></Suspense>} />
+          <Route path="profile" element={<Suspense fallback={<LazyLoadingFallback />}><ProfileView /></Suspense>} />
+          <Route path="live-classes" element={<Suspense fallback={<LazyLoadingFallback />}><LiveClassesView /></Suspense>} />
           {/* Sponsor Only Routes */}
           <Route element={<ProtectedRoute allowedRoles={['sponsor']} />}>
-            <Route path="sponsor" element={<SponsorDashboard />} />
+            <Route path="sponsor" element={<Suspense fallback={<LazyLoadingFallback />}><SponsorDashboard /></Suspense>} />
           </Route>
 
-          <Route path="settings" element={<SettingsView />} />
-          <Route path="ecosystem" element={<EcosystemView />} />
+          <Route path="settings" element={<Suspense fallback={<LazyLoadingFallback />}><SettingsView /></Suspense>} />
+          <Route path="ecosystem" element={<Suspense fallback={<LazyLoadingFallback />}><EcosystemView /></Suspense>} />
         </Route>
       </Route>
 

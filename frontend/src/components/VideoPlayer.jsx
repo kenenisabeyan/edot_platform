@@ -162,7 +162,7 @@ const VideoPlayer = ({ videoUrl, courseId, lessonId, requiredDuration, onComplet
   // Render YouTube/Vimeo with ReactPlayer
   if (videoType === 'youtube' || videoType === 'vimeo') {
     return (
-      <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl border border-gray-800 aspect-video">
+      <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl border-2 border-[#00D4FF]/60 aspect-video" style={{boxShadow: '0 0 20px rgba(0, 212, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.5)'}}>
         <ReactPlayer
           url={resolvedUrl}
           width="100%"
@@ -190,7 +190,7 @@ const VideoPlayer = ({ videoUrl, courseId, lessonId, requiredDuration, onComplet
 
   // Render HLS or direct video with native video element
   return (
-    <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl border border-gray-800 aspect-video">
+    <div className="relative w-full rounded-xl overflow-hidden bg-black shadow-2xl border-2 border-[#00D4FF]/60 aspect-video" style={{boxShadow: '0 0 20px rgba(0, 212, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.5)'}}>
       <video
         ref={videoRef}
         controls
