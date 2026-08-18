@@ -416,6 +416,7 @@ model Course {
   sponsorships       Sponsorship[]        @relation("SponsorshipCourses")
   intelligenceDocuments CourseIntelligenceDocument[]
   snapshots          CourseIntelligenceSnapshot[] @relation("CourseSnapshots")
+  skillMappings      CourseSkillMapping[]
 }
 
 model Lesson {
@@ -1593,4 +1594,57 @@ model CohortMember {
   @@unique([cohortId, userId])
   @@index([cohortId])
   @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Relational Skill Graph Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SkillNode {
+  id               String              @id @default(uuid())
+  code             String              @unique
+  name             String
+  domain           String              @default("Software Engineering")
+  category         String?
+  description      String?
+  level            String              @default("intermediate")
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  outgoingRelations SkillRelationship[] @relation("SourceSkill")
+  incomingRelations SkillRelationship[] @relation("TargetSkill")
+  courseMappings    CourseSkillMapping[]
+
+  @@index([domain])
+  @@index([category])
+}
+
+model SkillRelationship {
+  id               String     @id @default(uuid())
+  sourceSkillId    String
+  sourceSkill      SkillNode  @relation("SourceSkill", fields: [sourceSkillId], references: [id], onDelete: Cascade)
+  targetSkillId    String
+  targetSkill      SkillNode  @relation("TargetSkill", fields: [targetSkillId], references: [id], onDelete: Cascade)
+  relationType     String
+  weight           Float      @default(1.0)
+  createdAt        DateTime   @default(now())
+
+  @@unique([sourceSkillId, targetSkillId, relationType])
+  @@index([sourceSkillId])
+  @@index([targetSkillId])
+}
+
+model CourseSkillMapping {
+  id               String     @id @default(uuid())
+  courseId         String
+  course           Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  skillId          String
+  skill            SkillNode  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  lessonId         String?
+  quizId           String?
+  weight           Float      @default(1.0)
+  createdAt        DateTime   @default(now())
+
+  @@index([courseId])
+  @@index([skillId])
 }
