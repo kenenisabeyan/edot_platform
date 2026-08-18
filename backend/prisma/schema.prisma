@@ -1923,3 +1923,49 @@ model IntelligenceFeedback {
   @@index([domain])
   @@index([feedbackType])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Dynamic Course Intelligence Onboarding & Knowledge Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CourseIntelligenceStatus {
+  id                  String    @id @default(uuid())
+  courseId            String    @unique
+  status              String    @default("PENDING") // PENDING, PROCESSING, READY, FAILED, NEEDS_REFRESH
+  lastProcessedAt     DateTime?
+  lastContentVersion  Int       @default(1)
+  errorMessage        String?
+  processingVersion   String    @default("1.0.0")
+  aiEnabled           Boolean   @default(true)
+  knowledgeChunkCount Int       @default(0)
+  skillSuggestionCount Int      @default(0)
+  analyticsStatus     String    @default("INITIALIZED")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([courseId])
+  @@index([status])
+}
+
+model KnowledgeDocument {
+  id             String   @id @default(uuid())
+  organizationId String?
+  categoryId     String?
+  courseId       String
+  sectionId      String?
+  lessonId       String?
+  resourceType   String   // OVERVIEW, VIDEO, TEXT, DOCUMENT, QUIZ, ASSIGNMENT, ASSESSMENT, PROJECT
+  resourceId     String?
+  title          String
+  content        String   @db.Text
+  metadata       Json?
+  contentVersion Int      @default(1)
+  status         String   @default("ACTIVE") // ACTIVE, ARCHIVED, DEACTIVATED
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([resourceType])
+  @@index([status])
+}

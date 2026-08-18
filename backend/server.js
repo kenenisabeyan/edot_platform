@@ -69,6 +69,7 @@ import feedbackDomainRoutes from './src/intelligence/feedback/feedbackRoutes.js'
 import evaluationDomainRoutes from './src/intelligence/evaluation/evaluationRoutes.js';
 import integrationDomainRoutes from './src/intelligence/integrations/integrationRoutes.js';
 import dynamicContentDomainRoutes from './src/intelligence/dynamic/dynamicContentRoutes.js';
+import courseOnboardingDomainRoutes from './src/intelligence/onboarding/courseOnboardingRoutes.js';
 
 
 
@@ -204,6 +205,9 @@ app.use('/intelligence/integrations', integrationDomainRoutes);
 app.use('/api/intelligence/integrations', integrationDomainRoutes);
 app.use('/intelligence/dynamic', dynamicContentDomainRoutes);
 app.use('/api/intelligence/dynamic', dynamicContentDomainRoutes);
+app.use('/intelligence/onboarding', courseOnboardingDomainRoutes);
+app.use('/api/intelligence/onboarding', courseOnboardingDomainRoutes);
+app.use('/', courseOnboardingDomainRoutes);
 app.use('/intelligence', healthDomainRoutes);
 app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);
