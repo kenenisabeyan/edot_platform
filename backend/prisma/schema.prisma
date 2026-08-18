@@ -116,6 +116,7 @@ model User {
   skillEvidences       SkillEvidence[]       @relation("UserSkillEvidences")
   skillPassport        SkillPassport?        @relation("UserSkillPassport")
   careerTargets        LearnerCareerTarget[] @relation("UserCareerTargets")
+  cohortMemberships    CohortMember[]        @relation("UserCohortMemberships")
 }
 
 model LearnerProfile {
@@ -1540,4 +1541,56 @@ model LearnerCareerTarget {
   @@unique([userId, careerPathId])
   @@index([userId])
   @@index([careerPathId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Layer 5 Ecosystem - Multi-Tenancy & Institutional Cohort Analytics Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Institution {
+  id               String          @id @default(uuid())
+  name             String
+  code             String          @unique
+  type             String          @default("UNIVERSITY")
+  contactEmail     String?
+  status           String          @default("active")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  cohorts          Cohort[]
+
+  @@index([code])
+  @@index([status])
+}
+
+model Cohort {
+  id               String          @id @default(uuid())
+  institutionId    String
+  institution      Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  name             String
+  code             String          @unique
+  startDate        DateTime?
+  endDate          DateTime?
+  status           String          @default("active")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  members          CohortMember[]
+
+  @@index([institutionId])
+  @@index([code])
+}
+
+model CohortMember {
+  id               String          @id @default(uuid())
+  cohortId         String
+  cohort           Cohort          @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User            @relation("UserCohortMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role             String          @default("STUDENT")
+  joinedAt         DateTime        @default(now())
+
+  @@unique([cohortId, userId])
+  @@index([cohortId])
+  @@index([userId])
 }
