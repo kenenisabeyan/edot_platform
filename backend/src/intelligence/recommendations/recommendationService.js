@@ -1,148 +1,145 @@
 /**
  * EDOT Intelligence Domain - Recommendation Service
- * Produces personalized learning paths, courses, and project recommendations from intelligence signals.
+ * Service layer for managing learner recommendations, Next Best Action DTOs, and feedback loops.
  */
 
 import { prisma } from '../../../lib/prisma.js';
-import { validateRecommendationFeedbackPayload } from '../shared/validation.js';
+import { generateHybridRecommendations, resolveNextBestAction } from './recommendationEngine.js';
+import { NotFoundError, ValidationError } from '../shared/errors.js';
 
 /**
- * Computes live recommendations for a student.
+ * Generates and upserts fresh recommendations for a learner.
+ * 
+ * @param {string} userId 
  */
-export async function getPersonalizedRecommendations(userId) {
-  const [profile, progressRecords, enrollments, publishedCourses] = await Promise.all([
-    prisma.learnerProfile.findUnique({ where: { userId } }),
+export async function generateAndPersistRecommendations(userId) {
+  const [
+    userProgress,
+    quizAttempts,
+    weaknesses,
+    profile,
+    pastRecommendations
+  ] = await Promise.all([
     prisma.userCourseProgress.findMany({
       where: { userId },
-      include: { course: { select: { id: true, mainCategory: true, title: true } } },
-      take: 10
+      include: { course: { select: { id: true, title: true, mainCategory: true } } }
     }),
-    prisma.enrollment.findMany({
-      where: { studentId: userId },
-      select: { courseId: true }
+    prisma.quizAttempt.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 20
     }),
-    prisma.course.findMany({
-      where: { status: 'active', isPublished: true },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        mainCategory: true,
-        subCategory: true,
-        level: true,
-        thumbnail: true,
-        rating: true,
-        totalStudents: true,
-        tags: true,
-        instructor: { select: { name: true } }
-      },
-      take: 50,
-      orderBy: { totalStudents: 'desc' }
-    })
+    prisma.learnerWeakness.findMany({ where: { userId } }),
+    prisma.learnerProfile.findUnique({ where: { userId } }),
+    prisma.learnerRecommendation.findMany({ where: { userId }, take: 30 })
   ]);
 
-  const enrolledIds = new Set(enrollments.map(e => e.courseId));
-  const candidateCourses = publishedCourses.filter(c => !enrolledIds.has(c.id));
-
-  const goals = (profile?.learningGoals || []).map(g => String(g).toLowerCase());
-  const interests = (profile?.interests || []).map(i => String(i).toLowerCase());
-  const weaknesses = (profile?.weaknesses || []).map(w => String(w).toLowerCase());
-  const strengths = (profile?.strengths || []).map(s => String(s).toLowerCase());
-
-  // Score candidate courses
-  const scoredCourses = candidateCourses.map((course) => {
-    const courseTags = (course.tags || []).map(t => t.toLowerCase());
-    const courseCat = (course.mainCategory || '').toLowerCase();
-    const courseTitle = (course.title || '').toLowerCase();
-
-    let score = 50; // baseline
-
-    // Weakness matching (highest weight - bridge gaps)
-    const matchesWeakness = weaknesses.some(w => courseTitle.includes(w) || courseTags.some(t => t.includes(w)));
-    if (matchesWeakness) score += 25;
-
-    // Interest & Goal matching
-    const matchesGoal = goals.some(g => courseTitle.includes(g) || courseTags.some(t => t.includes(g)));
-    if (matchesGoal) score += 20;
-
-    const matchesInterest = interests.some(i => courseCat.includes(i) || courseTags.some(t => t.includes(i)));
-    if (matchesInterest) score += 15;
-
-    // Reinforce strength
-    if (strengths.some(s => courseCat.includes(s))) score += 8;
-
-    score = Math.min(100, score);
-
-    let reason = `${course.title} helps build mastery in ${course.mainCategory}.`;
-    if (matchesWeakness) {
-      reason = `Recommended to address detected learning gap in ${weaknesses[0] || course.mainCategory}.`;
-    } else if (matchesGoal) {
-      reason = `Directly aligns with your current learning goal.`;
-    }
-
-    return {
-      id: course.id,
-      title: course.title,
-      slug: course.slug,
-      mainCategory: course.mainCategory,
-      level: course.level,
-      thumbnail: course.thumbnail,
-      rating: course.rating,
-      instructor: course.instructor?.name || 'EDOT Instructor',
-      tags: course.tags || [course.mainCategory],
-      score,
-      reason
-    };
-  }).sort((a, b) => b.score - a.score);
-
-  const topCourses = scoredCourses.slice(0, 5);
-
-  // Synthesize learning paths
-  const uniqueCategories = [...new Set(topCourses.map(c => c.mainCategory))].slice(0, 2);
-  const learningPaths = uniqueCategories.map((category) => {
-    const pathSteps = scoredCourses.filter(c => c.mainCategory === category).slice(0, 4).map(c => c.title);
-    return {
-      title: `${category} Accelerated Mastery Path`,
-      description: `Structured progression tailored to your pace and strength profile.`,
-      steps: pathSteps.length > 0 ? pathSteps : [`${category} Core`, `${category} Advanced Projects`],
-      score: 88
-    };
+  const candidateList = generateHybridRecommendations({
+    userProgress,
+    quizAttempts,
+    weaknesses,
+    profile: profile || {},
+    pastRecommendations
   });
 
-  return {
-    courses: topCourses,
-    learningPaths,
-    skills: (profile?.weaknesses || []).slice(0, 3).map(w => ({
-      name: w,
-      reason: `Targeted practice for ${w} will boost your overall confidence index.`,
-      priority: 'high'
-    })),
-    metadata: {
-      generatedAt: new Date(),
-      confidence: profile?.confidenceScore || 75,
-      candidateCount: candidateCourses.length
-    }
-  };
+  // Upsert recommendations into PostgreSQL
+  const persisted = [];
+  for (const candidate of candidateList) {
+    const rec = await prisma.learnerRecommendation.create({
+      data: {
+        userId,
+        recommendationType: candidate.recommendationType,
+        targetType: candidate.targetType,
+        targetId: candidate.targetId,
+        priority: candidate.priority,
+        reason: candidate.reason,
+        evidence: candidate.evidence,
+        confidence: candidate.confidence,
+        status: candidate.status,
+        expiresAt: candidate.expiresAt
+      }
+    });
+    persisted.push(rec);
+  }
+
+  return persisted;
 }
 
 /**
- * Records student reaction to recommendation for closed-loop evaluation.
+ * Gets active pending recommendations for a learner.
+ * 
+ * @param {string} userId 
  */
-export async function recordRecommendationFeedback(userId, feedbackPayload) {
-  validateRecommendationFeedbackPayload(feedbackPayload);
-
-  const { recommendationType = 'course', targetId, targetTitle, reason, score, actionType } = feedbackPayload;
-
-  return prisma.recommendationResult.create({
-    data: {
+export async function getLearnerRecommendations(userId) {
+  let recommendations = await prisma.learnerRecommendation.findMany({
+    where: {
       userId,
-      recommendationType,
-      targetId: targetId || null,
-      targetTitle,
-      reason: reason || '',
-      score: Number(score) || 0,
-      wasActedOn: actionType !== 'dismissed',
-      actionType,
+      status: 'PENDING'
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 10
+  });
+
+  if (recommendations.length === 0) {
+    recommendations = await generateAndPersistRecommendations(userId);
+  }
+
+  return recommendations;
+}
+
+/**
+ * Resolves the Next Best Action for a student.
+ * 
+ * @param {string} userId 
+ */
+export async function getNextBestAction(userId) {
+  const recommendations = await getLearnerRecommendations(userId);
+  return resolveNextBestAction(recommendations);
+}
+
+/**
+ * Dismisses a recommendation (feedback loop: DISMISSED).
+ * 
+ * @param {string} userId 
+ * @param {string} recommendationId 
+ */
+export async function dismissRecommendation(userId, recommendationId) {
+  const rec = await prisma.learnerRecommendation.findFirst({
+    where: { id: recommendationId, userId }
+  });
+
+  if (!rec) {
+    throw new NotFoundError(`Recommendation [${recommendationId}] not found`);
+  }
+
+  return prisma.learnerRecommendation.update({
+    where: { id: rec.id },
+    data: {
+      status: 'DISMISSED',
+      actedAt: new Date()
+    }
+  });
+}
+
+/**
+ * Completes a recommendation (feedback loop: COMPLETED).
+ * 
+ * @param {string} userId 
+ * @param {string} recommendationId 
+ */
+export async function completeRecommendation(userId, recommendationId) {
+  const rec = await prisma.learnerRecommendation.findFirst({
+    where: { id: recommendationId, userId }
+  });
+
+  if (!rec) {
+    throw new NotFoundError(`Recommendation [${recommendationId}] not found`);
+  }
+
+  return prisma.learnerRecommendation.update({
+    where: { id: rec.id },
+    data: {
+      status: 'COMPLETED',
       actedAt: new Date()
     }
   });

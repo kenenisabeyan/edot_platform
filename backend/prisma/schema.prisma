@@ -107,6 +107,7 @@ model User {
   analyticsReport      LearnerAnalyticsReport?
   learningEvents       LearningEvent[]       @relation("UserLearningEvents")
   mentorSessions       MentorSession[]       @relation("UserMentorSessions")
+  learnerRecommendations LearnerRecommendation[] @relation("UserLearnerRecommendations")
 }
 
 model LearnerProfile {
@@ -1262,5 +1263,32 @@ model MentorSession {
   @@index([userId])
   @@index([courseId])
   @@index([lessonId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hybrid Recommendation Engine Store & Next Best Action
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LearnerRecommendation {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation("UserLearnerRecommendations", fields: [userId], references: [id], onDelete: Cascade)
+  recommendationType  String    // NEXT_LESSON, REVISION, PRACTICE, NEXT_COURSE, LEARNING_PATH, REST_RECOVERY, INSTRUCTOR_SUPPORT
+  targetType          String    // lesson, course, quiz, practice, recovery, support
+  targetId            String?
+  priority            String    @default("MEDIUM") // HIGH, MEDIUM, LOW
+  reason              String    // Explainable recommendation reason
+  evidence            Json?     // Traceable learner data
+  confidence          Float     @default(0.90) // 0.0 - 1.0
+  status              String    @default("PENDING") // PENDING, ACCEPTED, DISMISSED, COMPLETED
+  expiresAt           DateTime?
+  actedAt             DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([recommendationType])
   @@index([createdAt])
 }
