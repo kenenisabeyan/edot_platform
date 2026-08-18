@@ -120,6 +120,7 @@ model User {
   understandingAnalyses ConceptUnderstandingAnalysis[] @relation("UserUnderstandingAnalyses")
   practiceSessions     AIPracticeSession[]   @relation("UserPracticeSessions")
   assessmentInsights   AssessmentInsight[]   @relation("UserAssessmentInsights")
+  instructorInsights   InstructorInsight[]   @relation("InstructorInsights")
 }
 
 model LearnerProfile {
@@ -1737,4 +1738,25 @@ model AssessmentQualityTelemetry {
   updatedAt             DateTime @updatedAt
 
   @@index([quizId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Instructor Intelligence Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model InstructorInsight {
+  id                String   @id @default(uuid())
+  instructorId      String
+  instructor        User     @relation("InstructorInsights", fields: [instructorId], references: [id], onDelete: Cascade)
+  courseId          String?
+  severity          String   @default("HIGH")
+  title             String
+  reason            String
+  evidence          Json
+  recommendedAction String
+  createdAt         DateTime @default(now())
+
+  @@index([instructorId])
+  @@index([courseId])
+  @@index([severity])
 }
