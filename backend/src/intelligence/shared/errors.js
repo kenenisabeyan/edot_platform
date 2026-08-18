@@ -47,6 +47,13 @@ export class AIServiceUnavailableError extends IntelligenceError {
   }
 }
 
+export class ExternalServiceError extends IntelligenceError {
+  constructor(message = 'External service provider error') {
+    super(message, 502, 'EXTERNAL_SERVICE_ERROR');
+    this.name = 'ExternalServiceError';
+  }
+}
+
 export function intelligenceErrorHandler(err, req, res, next) {
   if (err instanceof IntelligenceError) {
     return res.status(err.statusCode).json({
