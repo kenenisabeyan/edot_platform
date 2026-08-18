@@ -64,6 +64,7 @@ const StudyGoalView = lazy(() => import('./pages/StudyGoalView'));
 const AchievementsView = lazy(() => import('./pages/AchievementsView'));
 const StudyTools = lazy(() => import('./pages/StudyTools'));
 const CareerCenter = lazy(() => import('./pages/CareerCenter'));
+const AdminIntelligenceDashboard = lazy(() => import('./pages/AdminIntelligenceDashboard'));
 
 
 
@@ -273,6 +274,7 @@ export default function App() {
             <Route path="analytics" element={<Suspense fallback={<LazyLoadingFallback />}><AnalyticsReport /></Suspense>} />
             <Route path="finance/fees" element={<Suspense fallback={<LazyLoadingFallback />}><FinanceFees /></Suspense>} />
             <Route path="finance/expenses" element={<Suspense fallback={<LazyLoadingFallback />}><FinanceExpenses /></Suspense>} />
+            <Route path="intelligence" element={<Suspense fallback={<LazyLoadingFallback />}><AdminIntelligenceDashboard /></Suspense>} />
           </Route>
 
           {/* Admin & Instructor Routes */}
