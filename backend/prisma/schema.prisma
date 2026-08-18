@@ -126,6 +126,7 @@ model User {
   projectSubmissions   ProjectSubmission[]   @relation("UserProjectSubmissions")
   portfolioItems       PortfolioItem[]       @relation("UserPortfolioItems")
   intelligentNudges    IntelligentNudge[]    @relation("UserIntelligentNudges")
+  intelligenceFeedbacks IntelligenceFeedback[] @relation("UserIntelligenceFeedbacks")
 }
 
 model LearnerProfile {
@@ -1900,4 +1901,25 @@ model IntelligentNudge {
   @@index([userId])
   @@index([status])
   @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Intelligence Feedback Loops Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IntelligenceFeedback {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation("UserIntelligenceFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  domain           String
+  targetId         String
+  feedbackType     String
+  reason           String?
+  optionalFeedback String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([domain])
+  @@index([feedbackType])
 }
