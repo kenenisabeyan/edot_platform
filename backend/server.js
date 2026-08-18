@@ -50,6 +50,7 @@ import analyticsRoutes from './src/intelligence/analytics/analyticsRoutes.js';
 import mentorDomainRoutes from './src/intelligence/mentor/mentorRoutes.js';
 import recommendationDomainRoutes from './src/intelligence/recommendations/recommendationRoutes.js';
 import adaptiveDomainRoutes from './src/intelligence/adaptive/adaptiveRoutes.js';
+import courseIntelligenceDomainRoutes from './src/intelligence/course/courseIntelligenceRoutes.js';
 
 
 
@@ -151,6 +152,7 @@ app.use('/intelligence/adaptive-path', adaptiveDomainRoutes);
 app.use('/api/intelligence/adaptive-path', adaptiveDomainRoutes);
 app.use('/intelligence/adaptive-plan', adaptiveDomainRoutes);
 app.use('/api/intelligence/adaptive-plan', adaptiveDomainRoutes);
+app.use('/', courseIntelligenceDomainRoutes);
 
 // Mount EDOT Intelligence Core (Domain Architecture)
 initializeIntelligenceCore(app, '/api/v2/intelligence');

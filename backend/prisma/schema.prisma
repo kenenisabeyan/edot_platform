@@ -407,6 +407,7 @@ model Course {
   courseReports      CourseReport[]
   sponsorships       Sponsorship[]        @relation("SponsorshipCourses")
   intelligenceDocuments CourseIntelligenceDocument[]
+  snapshots          CourseIntelligenceSnapshot[] @relation("CourseSnapshots")
 }
 
 model Lesson {
@@ -1357,4 +1358,30 @@ model MilestoneProgress {
 
   @@index([planId])
   @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Course Intelligence Engine Snapshot Store
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CourseIntelligenceSnapshot {
+  id                    String   @id @default(uuid())
+  courseId              String
+  course                Course   @relation("CourseSnapshots", fields: [courseId], references: [id], onDelete: Cascade)
+  difficultyScore       Float    @default(50.0)
+  completionRate        Float    @default(0.0)
+  engagementScore       Float    @default(50.0)
+  totalEnrolled         Int      @default(0)
+  totalCompleted        Int      @default(0)
+  dropoffPoints         Json
+  weakTopicAreas        Json
+  contentQualitySignals Json
+  instructorInsights    Json
+  drilldownData         Json?
+  generatedAt           DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([generatedAt])
 }
