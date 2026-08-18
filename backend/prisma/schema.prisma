@@ -119,6 +119,7 @@ model User {
   cohortMemberships    CohortMember[]        @relation("UserCohortMemberships")
   understandingAnalyses ConceptUnderstandingAnalysis[] @relation("UserUnderstandingAnalyses")
   practiceSessions     AIPracticeSession[]   @relation("UserPracticeSessions")
+  assessmentInsights   AssessmentInsight[]   @relation("UserAssessmentInsights")
 }
 
 model LearnerProfile {
@@ -1700,4 +1701,40 @@ model AIPracticeSession {
   @@index([userId])
   @@index([skillName])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Assessment Intelligence Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AssessmentInsight {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation("UserAssessmentInsights", fields: [userId], references: [id], onDelete: Cascade)
+  quizId                String?
+  assessmentId          String   @default("assessment-default")
+  score                 Float
+  masteryScore          Float
+  strengths             Json
+  weaknesses            Json
+  misconceptions        Json
+  improvementPlan       Json
+  reassessmentReadiness Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  @@index([userId])
+  @@index([quizId])
+}
+
+model AssessmentQualityTelemetry {
+  id                    String   @id @default(uuid())
+  quizId                String   @unique
+  totalSubmissions      Int      @default(0)
+  averageScore          Float    @default(0)
+  difficultQuestions    Json
+  classMisconceptions   Json
+  questionDiscrimination Json
+  updatedAt             DateTime @updatedAt
+
+  @@index([quizId])
 }
