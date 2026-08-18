@@ -125,6 +125,7 @@ model User {
   learningRoadmaps     LearningRoadmap[]     @relation("UserLearningRoadmaps")
   projectSubmissions   ProjectSubmission[]   @relation("UserProjectSubmissions")
   portfolioItems       PortfolioItem[]       @relation("UserPortfolioItems")
+  intelligentNudges    IntelligentNudge[]    @relation("UserIntelligentNudges")
 }
 
 model LearnerProfile {
@@ -1874,4 +1875,29 @@ model PortfolioItem {
 
   @@index([userId])
   @@index([submissionId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Intelligent Nudges Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model IntelligentNudge {
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation("UserIntelligentNudges", fields: [userId], references: [id], onDelete: Cascade)
+  triggerReason        String
+  priority             String   @default("MEDIUM")
+  title                String
+  message              String
+  recommendedAction    Json
+  deliveryChannel      String   @default("IN_APP")
+  expiresAt            DateTime
+  status               String   @default("ACTIVE")
+  helpfulnessRating    String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
 }
