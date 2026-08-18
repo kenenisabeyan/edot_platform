@@ -113,6 +113,8 @@ model User {
   milestones           MilestoneProgress[]     @relation("UserMilestones")
   opportunityMatches   LearnerOpportunityMatch[] @relation("UserOpportunityMatches")
   opportunityRecommendations OpportunityRecommendation[] @relation("UserOpportunityRecommendations")
+  skillEvidences       SkillEvidence[]       @relation("UserSkillEvidences")
+  skillPassport        SkillPassport?        @relation("UserSkillPassport")
 }
 
 model LearnerProfile {
@@ -180,6 +182,8 @@ model LearnerSkill {
   lastPracticedAt     DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  evidences           SkillEvidence[]
 
   @@unique([profileId, name])
   @@index([profileId])
@@ -1458,4 +1462,42 @@ model OpportunityRecommendation {
 
   @@index([userId])
   @@index([opportunityId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Skill Evidence Ledger & Verifiable Skill Passport Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SkillEvidence {
+  id               String       @id @default(uuid())
+  skillId          String
+  skill            LearnerSkill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User         @relation("UserSkillEvidences", fields: [userId], references: [id], onDelete: Cascade)
+  evidenceType     String
+  title            String
+  sourceId         String?
+  score            Float?
+  verificationLevel String      @default("VERIFIED")
+  metadata         Json?
+  verifiedAt       DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+
+  @@index([skillId])
+  @@index([userId])
+}
+
+model SkillPassport {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation("UserSkillPassport", fields: [userId], references: [id], onDelete: Cascade)
+  passportHash     String   @unique @default(uuid())
+  verifiedSkillCount Int    @default(0)
+  masteryIndex     Float    @default(0.0)
+  shareableUrl     String?
+  issuedAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([passportHash])
 }

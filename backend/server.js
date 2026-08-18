@@ -53,6 +53,7 @@ import adaptiveDomainRoutes from './src/intelligence/adaptive/adaptiveRoutes.js'
 import courseIntelligenceDomainRoutes from './src/intelligence/course/courseIntelligenceRoutes.js';
 import opportunityDomainRoutes from './src/intelligence/opportunity/opportunityRoutes.js';
 import healthDomainRoutes from './src/intelligence/monitoring/healthRoutes.js';
+import passportDomainRoutes from './src/intelligence/passport/passportRoutes.js';
 
 
 
@@ -156,6 +157,8 @@ app.use('/intelligence/adaptive-plan', adaptiveDomainRoutes);
 app.use('/api/intelligence/adaptive-plan', adaptiveDomainRoutes);
 app.use('/intelligence/opportunities', opportunityDomainRoutes);
 app.use('/api/intelligence/opportunities', opportunityDomainRoutes);
+app.use('/intelligence/skill-passport', passportDomainRoutes);
+app.use('/api/intelligence/skill-passport', passportDomainRoutes);
 app.use('/intelligence', healthDomainRoutes);
 app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);
