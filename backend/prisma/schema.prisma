@@ -115,6 +115,7 @@ model User {
   opportunityRecommendations OpportunityRecommendation[] @relation("UserOpportunityRecommendations")
   skillEvidences       SkillEvidence[]       @relation("UserSkillEvidences")
   skillPassport        SkillPassport?        @relation("UserSkillPassport")
+  careerTargets        LearnerCareerTarget[] @relation("UserCareerTargets")
 }
 
 model LearnerProfile {
@@ -1500,4 +1501,43 @@ model SkillPassport {
 
   @@index([userId])
   @@index([passportHash])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dynamic Career Intelligence & Skill Gap Analyzer Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CareerPath {
+  id               String                @id @default(uuid())
+  title            String                @unique
+  category         String
+  description      String
+  requiredSkills   Json
+  avgSalaryRange   String?
+  demandLevel      String                @default("HIGH")
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  learnerTargets   LearnerCareerTarget[]
+
+  @@index([category])
+}
+
+model LearnerCareerTarget {
+  id               String      @id @default(uuid())
+  userId           String
+  user             User        @relation("UserCareerTargets", fields: [userId], references: [id], onDelete: Cascade)
+  careerPathId     String
+  careerPath       CareerPath  @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
+  readinessScore   Float       @default(0)
+  acquiredSkills   Json
+  skillGaps        Json
+  roadmapSteps     Json
+  targetDate       DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([userId, careerPathId])
+  @@index([userId])
+  @@index([careerPathId])
 }

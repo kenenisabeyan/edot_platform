@@ -54,6 +54,7 @@ import courseIntelligenceDomainRoutes from './src/intelligence/course/courseInte
 import opportunityDomainRoutes from './src/intelligence/opportunity/opportunityRoutes.js';
 import healthDomainRoutes from './src/intelligence/monitoring/healthRoutes.js';
 import passportDomainRoutes from './src/intelligence/passport/passportRoutes.js';
+import careerDomainRoutes from './src/intelligence/career/careerRoutes.js';
 
 
 
@@ -159,6 +160,8 @@ app.use('/intelligence/opportunities', opportunityDomainRoutes);
 app.use('/api/intelligence/opportunities', opportunityDomainRoutes);
 app.use('/intelligence/skill-passport', passportDomainRoutes);
 app.use('/api/intelligence/skill-passport', passportDomainRoutes);
+app.use('/intelligence/career', careerDomainRoutes);
+app.use('/api/intelligence/career', careerDomainRoutes);
 app.use('/intelligence', healthDomainRoutes);
 app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);
