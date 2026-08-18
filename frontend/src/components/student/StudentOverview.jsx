@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import PremiumModal from '../PremiumModal';
+import PersonalizedIntelligenceDashboard from './PersonalizedIntelligenceDashboard';
 
 const StudentOverview = ({ 
   user, 
@@ -166,6 +167,9 @@ const StudentOverview = ({
   return (
 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative space-y-6 w-full max-w-none pb-10" ref={dropdownRef}>
       
+      {/* Personalized Intelligence Layer Dashboard */}
+      <PersonalizedIntelligenceDashboard isDarkMode={isDarkMode} onNavigateTab={setActiveTab} />
+
       {/* Hero Banner */}
       {/* Hero Banner */}
       <motion.div variants={itemVariants} className={`p-8 md:px-12 md:py-10 min-h-[240px] rounded-[32px] relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8 transition-all duration-500 ${isDarkMode ? 'bg-[#0B1D3A] border border-[#1e293b]' : 'bg-gradient-to-r from-[#EFF6FF] via-[#F8FAFC] to-[#EAF7FF] border border-[#E5E7EB]'}`}>
