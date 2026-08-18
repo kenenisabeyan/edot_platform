@@ -6,6 +6,7 @@ import generateToken from '../utils/generateToken.js';
 import { logActivity } from '../controllers/activityController.js';
 import { protect } from '../middleware/auth.js';
 import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
+import { onStudentCreated } from '../src/intelligence/profile/dynamicLearnerIntelligenceEngine.js';
 
 const router = express.Router();
 
@@ -44,6 +45,10 @@ router.post('/register', [
         status: initialStatus
       }
     });
+
+    if (finalRole === 'student') {
+      onStudentCreated(user.id, { name, email: normalizedEmail }).catch(err => console.error('[LearnerIntelligence] Non-blocking init failed:', err.message));
+    }
 
     await logActivity(
       user.id, 

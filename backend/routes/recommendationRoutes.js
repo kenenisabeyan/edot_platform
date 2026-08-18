@@ -19,7 +19,7 @@ router.get('/me', protect, checkNotBlocked, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const [profile, progressRecords, historyEvents, enrollments, publishedCourses] = await Promise.all([
+    const [profile, progressRecords, historyEvents, enrollments, publishedCourses, learnerSkills, learnerWeaknesses] = await Promise.all([
       prisma.learnerProfile.findUnique({ where: { userId } }),
       prisma.userCourseProgress.findMany({
         where: { userId },
@@ -55,26 +55,55 @@ router.get('/me', protect, checkNotBlocked, async (req, res) => {
         },
         take: 100,
         orderBy: { totalStudents: 'desc' }
+      }),
+      // Dynamic Learner Intelligence: verified skill mastery
+      prisma.learnerSkill.findMany({
+        where: { userId },
+        orderBy: { masteryScore: 'desc' },
+        take: 20
+      }),
+      // Dynamic Learner Intelligence: detected weakness entries
+      prisma.learnerWeakness.findMany({
+        where: { userId },
+        orderBy: { impactScore: 'desc' },
+        take: 10
       })
     ]);
 
     const goals = Array.isArray(profile?.learningGoals) ? profile.learningGoals : [];
     const interests = Array.isArray(profile?.interests) ? profile.interests : [];
-    const strengths = Array.isArray(profile?.strengths) ? profile.strengths : [];
-    const weaknesses = Array.isArray(profile?.weaknesses) ? profile.weaknesses : [];
     const enrolledCourseIds = enrollments.map((e) => e.courseId);
+
+    // Enrich strengths from verified skill mastery (masteryScore >= 50 = strength)
+    const profileStrengths = Array.isArray(profile?.strengths) ? profile.strengths : [];
+    const skillStrengths = learnerSkills
+      .filter(s => s.masteryScore >= 50)
+      .map(s => s.name);
+    const strengths = [...new Set([...profileStrengths, ...skillStrengths])];
+
+    // Enrich weaknesses from dynamic learner weakness entries + profile
+    const profileWeaknesses = Array.isArray(profile?.weaknesses) ? profile.weaknesses : [];
+    const detectedWeaknesses = learnerWeaknesses.map(w => w.topic);
+    const weaknesses = [...new Set([...profileWeaknesses, ...detectedWeaknesses])];
 
     const progressSignals = progressRecords.map((e) => ({
       title: e.course?.title || 'Course progress',
       category: e.course?.mainCategory || 'Learning'
     }));
 
+    // Compute quiz average from intelligence skill evidence count if no direct profile field
+    const quizAverage = profile?.quizAverage || (
+      learnerSkills.length > 0
+        ? Math.round(learnerSkills.reduce((acc, s) => acc + (s.masteryScore || 0), 0) / learnerSkills.length)
+        : 0
+    );
+
     const context = {
       goals,
       interests,
       strengths,
       weaknesses,
-      quizAverage: profile?.quizAverage || 0,
+      quizAverage,
       completedCourses: profile?.completedCourses || 0,
       progressSignals,
       feedback: historyEvents.map((e) => e.title)

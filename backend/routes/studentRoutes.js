@@ -3,6 +3,7 @@ import { protect, authorize, checkNotBlocked } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { logActivity } from '../controllers/activityController.js';
 import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
+import { onEnrollmentCreated } from '../src/intelligence/profile/dynamicLearnerIntelligenceEngine.js';
 
 const router = express.Router();
 
@@ -136,6 +137,9 @@ router.post('/courses/:courseId/enroll', async (req, res) => {
 
         await logActivity(studentId, `Enrolled in ${course.title}`, 'learning', course.title, courseId);
 
+        // Non-blocking Dynamic Learner Course Context Initialization
+        onEnrollmentCreated(studentId, courseId).catch(err => console.error('[LearnerIntelligence] Non-blocking enrollment init failed:', err.message));
+
         // Fire-and-forget: publish COURSE_ENROLLED event
         publishLearningEvent({
             userId: studentId,
@@ -250,6 +254,15 @@ router.post('/courses/:courseId/exam/complete', async (req, res) => {
         if (course) {
            await logActivity(userId, `Passed final exam for ${course.title}`, 'learning', course.title, course.id);
         }
+
+        // Fire-and-forget: publish ASSESSMENT_COMPLETED event
+        publishLearningEvent({
+            userId,
+            eventType: 'ASSESSMENT_COMPLETED',
+            courseId,
+            score: Number(score) || 0,
+            metadata: { courseTitle: course?.title, passed: true, examType: 'FINAL_EXAM' }
+        }).catch(() => {});
 
         res.status(200).json({ success: true, passedFinalExam: true, message: 'Congratulations! You passed the final exam.' });
     } catch (error) {

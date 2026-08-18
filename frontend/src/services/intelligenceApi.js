@@ -2,11 +2,8 @@
  * intelligenceApi.js
  *
  * Typed API wrappers for the EDOT Intelligence Core endpoints.
+ * Supports Dynamic Learner Intelligence, Multi-Level Hierarchy, Learning Events, and Real-Time Telemetry.
  * All functions return { success, data } or throw.
- *
- * Usage:
- *   import * as intelligenceApi from '../services/intelligenceApi';
- *   const report = await intelligenceApi.getMyAnalytics();
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api';
@@ -23,7 +20,36 @@ async function request(method, path, body) {
   return data;
 }
 
-// ─── Wave 1: Recommendations ─────────────────────────────────────────────────
+// ─── Dynamic Learner Intelligence & Multi-Level Hierarchy ────────────────────
+
+/**
+ * Fetch complete multi-level learner intelligence hierarchy:
+ * Learner -> Global Intelligence -> Category Intelligence -> Course Intelligence -> Section Intelligence -> Lesson Intelligence
+ * @param {{ courseId?: string, lessonId?: string, sectionId?: string }} params
+ */
+export const getLearnerHierarchy = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.courseId) query.append('courseId', params.courseId);
+  if (params.lessonId) query.append('lessonId', params.lessonId);
+  if (params.sectionId) query.append('sectionId', params.sectionId);
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return request('GET', `/intelligence/profile/hierarchy${qs}`);
+};
+
+/** Fetch the current user's full relational learner profile. */
+export const getMyLearnerProfile = () => request('GET', '/intelligence/profile/me');
+
+/** Resynchronize the learner profile using the latest learning events. */
+export const refreshLearnerProfile = () => request('POST', '/intelligence/profile/refresh');
+
+/**
+ * Publish a learning event into the unified event pipeline.
+ * @param {object} eventPayload
+ */
+export const publishLearningEvent = (eventPayload) =>
+  request('POST', '/learning/events', eventPayload);
+
+// ─── Wave 1: Recommendations & Next Best Action ─────────────────────────────
 
 /** Fetch personalized course recommendations for the current user. */
 export const getRecommendations = () => request('GET', '/recommendations/me');
@@ -90,6 +116,10 @@ export const syncProfile = (data = {}) => request('POST', '/learning-profile/syn
 export const recordLearningEvent = (event) => request('POST', '/learning-profile/events', event);
 
 export default {
+  getLearnerHierarchy,
+  getMyLearnerProfile,
+  refreshLearnerProfile,
+  publishLearningEvent,
   getRecommendations,
   sendRecommendationFeedback,
   recordQuizAttempt,

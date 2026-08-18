@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import Markdown from 'markdown-to-jsx';
 import sessionTracker from '../services/sessionTracker.js';
+import { recordQuizAttempt, publishLearningEvent } from '../services/intelligenceApi.js';
 
 export default function Lesson() {
   const isDarkMode = useThemeMode();
@@ -920,22 +921,38 @@ export default function Lesson() {
                               <button 
                                  onClick={() => {
                                     let score = 0;
-                                    targetLesson.quiz.forEach((q, i) => { if (quizAnswers[`${lId}-${i}`] === q.correctAnswer) score++; });
-                                    const total = targetLesson.quiz.length;
-                                    const percentage = (score / total) * 100;
-                                    let grade = 'F';
-                                    if (percentage >= 90) grade = 'A';
-                                    else if (percentage >= 80) grade = 'B';
-                                    else if (percentage >= 70) grade = 'C';
-                                    else if (percentage >= 50) grade = 'D';
+                                    targetLesson.quiz.forEach((q, i) => { 
+                                        const selected = quizAnswers[`${lId}-${i}`];
+                                        const isCorrect = selected === q.correctAnswer;
+                                        if (isCorrect) score++; 
 
-                                    const passed = percentage >= 50;
+                                        recordQuizAttempt({
+                                           courseId,
+                                           lessonId: lId,
+                                           questionIndex: i,
+                                           question: q.question || q.stem || `Question ${i + 1}`,
+                                           selectedAnswer: String(selected !== undefined ? selected : ''),
+                                           correctAnswer: String(q.correctAnswer),
+                                           isCorrect: Boolean(isCorrect),
+                                           topic: q.topic || targetLesson.title,
+                                           timeSpentSeconds: 45
+                                        }).catch(() => {});
+                                     });
+                                     const total = targetLesson.quiz.length;
+                                     const percentage = (score / total) * 100;
+                                     let grade = 'F';
+                                     if (percentage >= 90) grade = 'A';
+                                     else if (percentage >= 80) grade = 'B';
+                                     else if (percentage >= 70) grade = 'C';
+                                     else if (percentage >= 50) grade = 'D';
 
-                                    if (!preAssessmentScore[lId]) {
-                                       setPreAssessmentScore(prev => ({ ...prev, [lId]: percentage }));
-                                    }
+                                     const passed = percentage >= 50;
 
-                                    setQuizState(prev => ({ ...prev, [lId]: { submitted: true, score, total, grade, passed } }));
+                                     if (!preAssessmentScore[lId]) {
+                                        setPreAssessmentScore(prev => ({ ...prev, [lId]: percentage }));
+                                     }
+
+                                     setQuizState(prev => ({ ...prev, [lId]: { submitted: true, score, total, grade, passed } }));
                                      toast.success('Assessment Submitted!');
                                  }}
                                  className={`px-6 py-2.5 bg-[#1e48bc] font-bold rounded-md hover:bg-blue-700 shadow-sm text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
@@ -1244,7 +1261,24 @@ export default function Lesson() {
                                            return;
                                         }
                                         setAiQuizSubmitted(true);
-                                        toast.success("Quiz Submitted!");
+
+                                        aiQuiz.forEach((q, qIdx) => {
+                                           const selected = aiQuizAnswers[qIdx];
+                                           const isCorrect = selected === q.correctAnswer;
+                                           recordQuizAttempt({
+                                              courseId,
+                                              lessonId: selectedLessonId,
+                                              questionIndex: qIdx,
+                                              question: q.question,
+                                              selectedAnswer: String(selected),
+                                              correctAnswer: String(q.correctAnswer),
+                                              isCorrect: Boolean(isCorrect),
+                                              topic: q.topic || 'AI Practice Quiz',
+                                              timeSpentSeconds: 30
+                                           }).catch(() => {});
+                                        });
+
+                                        toast.success("Quiz Submitted! Intelligence profile updated.");
                                      }}
                                      className="w-full py-3 bg-[#EA580C] text-white text-xs font-black rounded-xl hover:bg-[#d94e07] shadow-md transition-all cursor-pointer"
                                   >

@@ -30,18 +30,27 @@ async function callGemini(systemInstruction, promptText) {
 }
 
 async function getLearnerContext(userId) {
-  const [profile, enrollments, historyEvents, weaknessEntries, latestSnapshot] = await Promise.all([
+  const [profile, enrollments, historyEvents, weaknessEntries, latestSnapshot, learnerSkills] = await Promise.all([
     prisma.learnerProfile.findUnique({ where: { userId } }),
     prisma.userCourseProgress.findMany({ where: { userId }, include: { course: true } }),
     prisma.learningHistoryEvent.findMany({ where: { userId }, orderBy: { occurredAt: 'desc' }, take: 8 }),
-    prisma.learnerWeakness.findMany({ where: { profile: { userId } }, orderBy: { impactScore: 'desc' }, take: 5 }),
+    prisma.learnerWeakness.findMany({
+      where: { OR: [{ userId }, { profile: { userId } }] },
+      orderBy: { impactScore: 'desc' },
+      take: 5
+    }),
     prisma.learningProgressSnapshot.findFirst({
       where: { userId },
       orderBy: { generatedAt: 'desc' }
+    }),
+    prisma.learnerSkill.findMany({
+      where: { userId },
+      orderBy: { masteryScore: 'desc' },
+      take: 8
     })
   ]);
 
-  return { profile, enrollments, historyEvents, weaknessEntries, latestSnapshot };
+  return { profile, enrollments, historyEvents, weaknessEntries, latestSnapshot, learnerSkills };
 }
 
 import {
@@ -68,6 +77,7 @@ router.post('/chat', protect, checkNotBlocked, async (req, res, next) => {
     const activeCourses = learnerContext.enrollments.map((entry) => entry.course?.title).filter(Boolean);
     const recentHistory = learnerContext.historyEvents.map((entry) => `${entry.eventType}: ${entry.title}`).join(' | ');
     const weakAreas = learnerContext.weaknessEntries.map((entry) => entry.topic).join(', ');
+    const verifiedSkills = (learnerContext.learnerSkills || []).map((s) => `${s.name} (${Math.round(s.masteryScore)}% mastery)`).join(', ');
     const snap = learnerContext.latestSnapshot;
     const progressSummary = snap
       ? `overall progress ${Math.round(snap.overallProgress)}%, quiz avg ${Math.round(snap.quizAverage)}%, study streak ${snap.studyStreak} days, weekly hours ${snap.weeklyStudyHours.toFixed(1)}`
@@ -106,7 +116,7 @@ router.post('/chat', protect, checkNotBlocked, async (req, res, next) => {
     const promptPayload = constructSecurePromptPayload({
       systemPolicy: systemInstruction,
       courseContext: { courseId, activeCourses },
-      learnerContext: { profile, progressSummary, recentHistory, weakAreas },
+      learnerContext: { profile, progressSummary, recentHistory, weakAreas, verifiedSkills },
       userInput: `${conversationPrompt}\n\nStudent message: ${sanitizedMessage}`
     });
 

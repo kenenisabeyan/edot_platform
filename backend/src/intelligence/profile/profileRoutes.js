@@ -1,14 +1,29 @@
 /**
  * EDOT Intelligence Domain - Learner Profile Router
- * Routes for retrieving, refreshing, and managing relational learner profiles.
+ * Routes for retrieving, refreshing, and managing relational learner profiles and multi-level hierarchy context.
  */
 
 import express from 'express';
 import { protect, checkNotBlocked } from '../../../middleware/auth.js';
 import { getFullLearnerProfile, syncLearnerProfile, upsertSkillNode } from './profileService.js';
+import { getMultiLevelLearnerContext } from './dynamicLearnerIntelligenceEngine.js';
 import { ValidationError } from '../shared/errors.js';
 
 const router = express.Router();
+
+// GET /intelligence/profile/hierarchy - Multi-level isolated context
+router.get('/hierarchy', protect, checkNotBlocked, async (req, res, next) => {
+  try {
+    const { courseId, lessonId, sectionId } = req.query;
+    const hierarchy = await getMultiLevelLearnerContext(req.user.id, courseId || null, lessonId || null, sectionId || null);
+    res.json({
+      success: true,
+      data: hierarchy
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // GET /intelligence/profile/me or /api/v2/intelligence/profile/me
 router.get('/me', protect, checkNotBlocked, async (req, res, next) => {

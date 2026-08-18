@@ -1,18 +1,22 @@
 /**
  * EDOT Intelligence Domain - Unified Learning Event Publisher & Store Service
  * Ingests, deduplicates, persists, and asynchronously dispatches learning events.
+ * 
+ * Reusable event publishing helpers allow all present and future EDOT modules
+ * to publish learning events using the same clean interface without manual DB manipulation.
  */
 
 import { prisma } from '../../../lib/prisma.js';
 import { eventBus } from '../shared/eventBus.js';
 import { validateAndNormalizeLearningEvent } from './eventValidator.js';
 import { ValidationError } from '../shared/errors.js';
+import { onLearningActivityOccurred, onStudentCreated, onEnrollmentCreated } from '../profile/dynamicLearnerIntelligenceEngine.js';
 
 /**
  * Ingests and stores a single learning event with idempotency guarantees.
  * 
  * @param {object} rawPayload 
- * @param {object} authUser 
+ * @param {object} [authUser] 
  * @returns {Promise<{ isDuplicate: boolean, event: object }>}
  */
 export async function publishLearningEvent(rawPayload, authUser = null) {
@@ -51,11 +55,14 @@ export async function publishLearningEvent(rawPayload, authUser = null) {
     throw error;
   }
 
-  // 3. Asynchronously broadcast to downstream consumers (fire-and-forget)
+  // 3. Asynchronously broadcast to downstream consumers & targeted learner intelligence
   eventBus.publish(normalized.eventType, {
     ...eventRecord,
     eventId: eventRecord.id
   });
+
+  // Non-blocking targeted incremental Learner Intelligence Update
+  onLearningActivityOccurred(eventRecord).catch(err => console.error('[LearnerIntelligence] Non-blocking event update failed:', err.message));
 
   return {
     isDuplicate: false,
@@ -67,7 +74,7 @@ export async function publishLearningEvent(rawPayload, authUser = null) {
  * Ingests a batch of learning events atomically.
  * 
  * @param {Array<object>} eventsArray 
- * @param {object} authUser 
+ * @param {object} [authUser] 
  * @returns {Promise<{ processedCount: number, duplicatesCount: number, events: Array<object> }>}
  */
 export async function publishLearningEventsBatch(eventsArray, authUser = null) {
@@ -107,6 +114,8 @@ export async function publishLearningEventsBatch(eventsArray, authUser = null) {
       ...created,
       eventId: created.id
     });
+
+    onLearningActivityOccurred(created).catch(err => console.error('[LearnerIntelligence] Batch incremental update error:', err.message));
   }
 
   return {
@@ -114,6 +123,138 @@ export async function publishLearningEventsBatch(eventsArray, authUser = null) {
     duplicatesCount,
     events: results
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable Helper Publishers for All EDOT Modules
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Helper: Publish STUDENT_CREATED event and initialize baseline intelligence
+ */
+export async function publishStudentCreatedEvent(userId, data = {}, authUser = null) {
+  onStudentCreated(userId, data).catch(err => console.error('[LearnerIntelligence] onStudentCreated failed:', err.message));
+  return publishLearningEvent({
+    userId,
+    eventType: 'STUDENT_CREATED',
+    metadata: data
+  }, authUser);
+}
+
+/**
+ * Helper: Publish ENROLLMENT_CREATED / COURSE_ENROLLED event and connect course intelligence
+ */
+export async function publishEnrollmentCreatedEvent(userId, courseId, data = {}, authUser = null) {
+  onEnrollmentCreated(userId, courseId).catch(err => console.error('[LearnerIntelligence] onEnrollmentCreated failed:', err.message));
+  return publishLearningEvent({
+    userId,
+    courseId,
+    eventType: 'COURSE_ENROLLED',
+    metadata: data
+  }, authUser);
+}
+
+/**
+ * Helper: Publish LESSON_STARTED event
+ */
+export async function publishLessonStartedEvent(userId, courseId, lessonId, data = {}, authUser = null) {
+  return publishLearningEvent({
+    userId,
+    courseId,
+    lessonId,
+    eventType: 'LESSON_STARTED',
+    metadata: data
+  }, authUser);
+}
+
+/**
+ * Helper: Publish LESSON_COMPLETED event
+ */
+export async function publishLessonCompletedEvent(userId, courseId, lessonId, data = {}, authUser = null) {
+  return publishLearningEvent({
+    userId,
+    courseId,
+    lessonId,
+    eventType: 'LESSON_COMPLETED',
+    metadata: data
+  }, authUser);
+}
+
+/**
+ * Helper: Publish VIDEO_PROGRESS event
+ */
+export async function publishVideoProgressEvent(userId, courseId, lessonId, duration, progress, data = {}, authUser = null) {
+  return publishLearningEvent({
+    userId,
+    courseId,
+    lessonId,
+    eventType: 'VIDEO_PROGRESS',
+    duration,
+    progress,
+    metadata: data
+  }, authUser);
+}
+
+/**
+ * Helper: Publish QUIZ_COMPLETED / QUIZ_PASSED / QUIZ_FAILED event
+ */
+export async function publishQuizCompletedEvent(userId, courseId, quizId, score, isPassed, data = {}, authUser = null) {
+  const eventType = isPassed ? 'QUIZ_PASSED' : (score < 70 ? 'QUIZ_FAILED' : 'QUIZ_COMPLETED');
+  return publishLearningEvent({
+    userId,
+    courseId,
+    quizId,
+    eventType,
+    score,
+    metadata: {
+      isCorrect: isPassed,
+      ...data
+    }
+  }, authUser);
+}
+
+/**
+ * Helper: Publish ASSIGNMENT_SUBMITTED event
+ */
+export async function publishAssignmentSubmittedEvent(userId, courseId, assignmentId, data = {}, authUser = null) {
+  return publishLearningEvent({
+    userId,
+    courseId,
+    assignmentId,
+    eventType: 'ASSIGNMENT_SUBMITTED',
+    metadata: data
+  }, authUser);
+}
+
+/**
+ * Helper: Publish ASSESSMENT_COMPLETED event
+ */
+export async function publishAssessmentCompletedEvent(userId, courseId, assessmentId, score, data = {}, authUser = null) {
+  return publishLearningEvent({
+    userId,
+    courseId,
+    eventType: 'ASSESSMENT_COMPLETED',
+    score,
+    metadata: {
+      assessmentId,
+      ...data
+    }
+  }, authUser);
+}
+
+/**
+ * Helper: Publish PROJECT_SUBMITTED event
+ */
+export async function publishProjectSubmittedEvent(userId, courseId, projectId, data = {}, authUser = null) {
+  return publishLearningEvent({
+    userId,
+    courseId,
+    eventType: 'PROJECT_SUBMITTED',
+    metadata: {
+      projectId,
+      ...data
+    }
+  }, authUser);
 }
 
 /**

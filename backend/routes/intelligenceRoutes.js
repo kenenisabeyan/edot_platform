@@ -15,6 +15,7 @@
 import express from 'express';
 import { protect, authorize, checkNotBlocked } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
+import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
 
 const router = express.Router();
 
@@ -105,6 +106,25 @@ router.post('/quiz-attempts', protect, checkNotBlocked, async (req, res) => {
         }
       }
     }
+
+    // Fire-and-forget: publish learning event to dynamic learner intelligence
+    publishLearningEvent({
+      userId,
+      courseId,
+      lessonId: lessonId || null,
+      quizId: quizId || null,
+      eventType: isCorrect ? 'QUIZ_PASSED' : 'QUIZ_FAILED',
+      score: isCorrect ? 100 : 0,
+      metadata: {
+        topic: topic || question,
+        question,
+        questionIndex,
+        selectedAnswer,
+        correctAnswer,
+        timeSpentSeconds,
+        isCorrect: Boolean(isCorrect)
+      }
+    }).catch(() => {});
 
     return res.json({ success: true, data: attempt });
   } catch (error) {

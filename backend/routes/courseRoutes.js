@@ -3,6 +3,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { logActivity } from '../controllers/activityController.js';
 import { onboardSingleCourse, onContentDeactivated } from '../src/intelligence/onboarding/courseOnboardingPipeline.js';
+import { onEnrollmentCreated } from '../src/intelligence/profile/dynamicLearnerIntelligenceEngine.js';
 
 const router = express.Router();
 
@@ -478,6 +479,11 @@ router.post('/:id/enroll', protect, authorize('student'), async (req, res) => {
                 }
             });
         }
+
+        // Non-blocking Dynamic Learner Course Context Initialization
+        onEnrollmentCreated(userId, course.id).catch(err => console.error('[LearnerIntelligence] Non-blocking enrollment init failed:', err.message));
+
+        await logActivity(userId, `Requested enrollment in course: ${course.title}`, 'enrollment', course.title, course.id);
 
         const progressExisting = await prisma.userCourseProgress.findFirst({
             where: { userId, courseId: course.id }
