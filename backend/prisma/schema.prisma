@@ -108,6 +108,9 @@ model User {
   learningEvents       LearningEvent[]       @relation("UserLearningEvents")
   mentorSessions       MentorSession[]       @relation("UserMentorSessions")
   learnerRecommendations LearnerRecommendation[] @relation("UserLearnerRecommendations")
+  adaptivePlans        AdaptiveLearningPlan[]  @relation("UserAdaptivePlans")
+  adaptiveRecommendations AdaptiveRecommendation[] @relation("UserAdaptiveRecommendations")
+  milestones           MilestoneProgress[]     @relation("UserMilestones")
 }
 
 model LearnerProfile {
@@ -1291,4 +1294,67 @@ model LearnerRecommendation {
   @@index([status])
   @@index([recommendationType])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Adaptive Learning Engine Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AdaptiveLearningPlan {
+  id                    String                   @id @default(uuid())
+  userId                String
+  user                  User                     @relation("UserAdaptivePlans", fields: [userId], references: [id], onDelete: Cascade)
+  planType              String                   @default("BALANCED") // BALANCED, REMEDIATION, ACCELERATED
+  paceMode              String                   @default("STANDARD") // SLOW_PACED, STANDARD, ACCELERATED
+  suggestedSequence     Json
+  summaryExplanation    String
+  adaptedAt             DateTime                 @default(now())
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  recommendations       AdaptiveRecommendation[]
+  milestones            MilestoneProgress[]
+
+  @@index([userId])
+  @@index([planType])
+}
+
+model AdaptiveRecommendation {
+  id                    String               @id @default(uuid())
+  planId                String
+  plan                  AdaptiveLearningPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User                 @relation("UserAdaptiveRecommendations", fields: [userId], references: [id], onDelete: Cascade)
+  category              String               // REVISION, ADVANCED_CONTENT, PRACTICE, LESSON_SEQUENCE
+  title                 String
+  description           String
+  reason                String
+  evidence              Json?
+  status                String               @default("RECOMMENDED") // RECOMMENDED, ACCEPTED, DECLINED, COMPLETED
+  isHelpful             Boolean?
+  feedbackComment       String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([planId])
+  @@index([userId])
+  @@index([category])
+}
+
+model MilestoneProgress {
+  id                    String               @id @default(uuid())
+  planId                String
+  plan                  AdaptiveLearningPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User                 @relation("UserMilestones", fields: [userId], references: [id], onDelete: Cascade)
+  milestoneTitle        String
+  description           String
+  targetDate            DateTime?
+  progress              Float                @default(0)
+  completed             Boolean              @default(false)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([planId])
+  @@index([userId])
 }
