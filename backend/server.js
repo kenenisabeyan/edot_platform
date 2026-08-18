@@ -68,6 +68,7 @@ import nudgeDomainRoutes from './src/intelligence/nudges/nudgeRoutes.js';
 import feedbackDomainRoutes from './src/intelligence/feedback/feedbackRoutes.js';
 import evaluationDomainRoutes from './src/intelligence/evaluation/evaluationRoutes.js';
 import integrationDomainRoutes from './src/intelligence/integrations/integrationRoutes.js';
+import dynamicContentDomainRoutes from './src/intelligence/dynamic/dynamicContentRoutes.js';
 
 
 
@@ -201,6 +202,8 @@ app.use('/intelligence/evaluation', evaluationDomainRoutes);
 app.use('/api/intelligence/evaluation', evaluationDomainRoutes);
 app.use('/intelligence/integrations', integrationDomainRoutes);
 app.use('/api/intelligence/integrations', integrationDomainRoutes);
+app.use('/intelligence/dynamic', dynamicContentDomainRoutes);
+app.use('/api/intelligence/dynamic', dynamicContentDomainRoutes);
 app.use('/intelligence', healthDomainRoutes);
 app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);
