@@ -22,6 +22,19 @@ router.get('/me', protect, checkNotBlocked, async (req, res, next) => {
   }
 });
 
+// GET /intelligence/skill-passport/me/share-kit
+router.get('/me/share-kit', protect, checkNotBlocked, async (req, res, next) => {
+  try {
+    const passport = await getLearnerSkillPassport(req.user.id);
+    res.json({
+      success: true,
+      data: passport.shareKit
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /intelligence/skill-passport/evidence
 router.post('/evidence', protect, checkNotBlocked, async (req, res, next) => {
   try {

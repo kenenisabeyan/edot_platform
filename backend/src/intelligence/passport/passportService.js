@@ -150,7 +150,58 @@ export async function getLearnerSkillPassport(userId) {
         verificationLevel: e.verificationLevel,
         verifiedAt: e.verifiedAt
       }))
-    }))
+    })),
+    shareKit: generatePassportShareKit(user?.name || 'Learner', passport.passportHash, passport.masteryIndex, passport.verifiedSkillCount)
+  };
+}
+
+/**
+ * Generates LinkedIn 1-click Add-To-Profile URL, HTML/Markdown embed snippets, and JSON-LD schema.
+ */
+export function generatePassportShareKit(learnerName, passportHash, masteryIndex, skillCount) {
+  const verifyUrl = `https://edot.org/verify/passport/${passportHash}`;
+  const certName = encodeURIComponent(`EDOT Verified Skill Passport (${skillCount} Skills)`);
+  const orgName = encodeURIComponent('EDOT Learning & Growth Ecosystem');
+  const encodedUrl = encodeURIComponent(verifyUrl);
+  const encodedCertId = encodeURIComponent(passportHash);
+
+  // 1-Click LinkedIn Add to Profile URL
+  const linkedInAddUrl = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${certName}&organizationName=${orgName}&certUrl=${encodedUrl}&certId=${encodedCertId}`;
+
+  // LinkedIn Post Share URL
+  const linkedInSharePostUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+
+  // Embeddable HTML Badge Snippet
+  const htmlEmbedSnippet = `<div class="edot-verified-passport-badge" data-passport-hash="${passportHash}">
+  <a href="${verifyUrl}" target="_blank" rel="noopener noreferrer">
+    <img src="https://img.shields.io/badge/EDOT_Verified_Skill_Passport-Mastery_${masteryIndex}%25-0A66C2?style=for-the-badge&logo=shield" alt="EDOT Verified Skill Passport" />
+  </a>
+</div>`;
+
+  // Embeddable Markdown Snippet
+  const markdownEmbedSnippet = `[![EDOT Verified Skill Passport](https://img.shields.io/badge/EDOT_Verified_Skill_Passport-Mastery_${masteryIndex}%25-0A66C2?style=for-the-badge&logo=shield)](${verifyUrl})`;
+
+  return {
+    verificationUrl: verifyUrl,
+    linkedIn: {
+      addToProfileUrl: linkedInAddUrl,
+      sharePostUrl: linkedInSharePostUrl
+    },
+    embeds: {
+      html: htmlEmbedSnippet,
+      markdown: markdownEmbedSnippet
+    },
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "EducationalOccupationalCredential",
+      "name": `EDOT Verified Skill Passport - ${learnerName}`,
+      "credentialCategory": "Skill Passport",
+      "url": verifyUrl,
+      "validIn": {
+        "@type": "AdministrativeArea",
+        "name": "Global"
+      }
+    }
   };
 }
 
