@@ -1,9 +1,14 @@
 /**
  * EDOT Intelligence Domain - Secure Learning Context Builder
  * Assembles authorized learner context & grounded course knowledge.
+ * 
+ * Uses the Dynamic Course Intelligence Onboarding Pipeline's KnowledgeDocument
+ * store for rich, structured course knowledge with strict enrollment isolation.
+ * Falls back to legacy CourseIntelligenceDocument if the new system has no data yet.
  */
 
 import { prisma } from '../../../lib/prisma.js';
+import { getAuthorizedCourseKnowledgeContext } from '../onboarding/courseOnboardingPipeline.js';
 
 /**
  * Builds a secure, sanitized context object for a student's mentor query.
@@ -60,15 +65,36 @@ export async function buildStudentLearningContext(userId, options = {}) {
   const correctQuizCount = quizAttempts.filter(q => q.isCorrect).length;
   const quizAccuracyPercent = totalQuizCount > 0 ? Math.round((correctQuizCount / totalQuizCount) * 100) : 75;
 
-  // Grounded course knowledge (chunks from CourseIntelligenceDocument if available)
+  // ── Grounded Knowledge Retrieval (KnowledgeDocument Pipeline → Legacy Fallback) ──
   let groundedKnowledge = null;
+  let knowledgeSources = [];
+
   if (currentCourse) {
-    const doc = await prisma.courseIntelligenceDocument.findFirst({
-      where: { courseId: currentCourse.id },
-      include: { chunks: { take: 3 } }
-    });
-    if (doc && doc.chunks.length > 0) {
-      groundedKnowledge = doc.chunks.map(c => c.content).join('\n---\n');
+    try {
+      // Primary: Use the new Authorized Knowledge Base from the Onboarding Pipeline
+      const authorizedCtx = await getAuthorizedCourseKnowledgeContext(userId, currentCourse.id, lessonId);
+      if (authorizedCtx.authorized && authorizedCtx.knowledgeChunks.length > 0) {
+        groundedKnowledge = authorizedCtx.knowledgeChunks.join('\n---\n');
+        knowledgeSources = [authorizedCtx.courseTitle];
+      }
+    } catch (err) {
+      console.warn('[ContextBuilder] KnowledgeDocument retrieval failed, trying legacy:', err.message);
+    }
+
+    // Fallback: Legacy CourseIntelligenceDocument system
+    if (!groundedKnowledge) {
+      try {
+        const doc = await prisma.courseIntelligenceDocument.findFirst({
+          where: { courseId: currentCourse.id },
+          include: { chunks: { take: 3 } }
+        });
+        if (doc && doc.chunks.length > 0) {
+          groundedKnowledge = doc.chunks.map(c => c.content).join('\n---\n');
+        }
+      } catch (legacyErr) {
+        // Both systems unavailable - graceful degradation
+        console.warn('[ContextBuilder] Legacy knowledge also unavailable:', legacyErr.message);
+      }
     }
   }
 
@@ -89,6 +115,6 @@ export async function buildStudentLearningContext(userId, options = {}) {
     recommendedNextAction: profile?.recommendedNextAction || 'Continue module exercises',
     groundedKnowledge: groundedKnowledge || (currentLesson ? `Lesson "${currentLesson.title}": ${currentLesson.description || currentLesson.summary || 'Core concept lesson'}` : null),
     knowledgeAvailable: Boolean(groundedKnowledge || currentLesson),
-    sources: [currentCourse?.title, currentLesson?.title].filter(Boolean)
+    sources: knowledgeSources.length > 0 ? knowledgeSources : [currentCourse?.title, currentLesson?.title].filter(Boolean)
   };
 }

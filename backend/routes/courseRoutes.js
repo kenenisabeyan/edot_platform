@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, authorize } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { logActivity } from '../controllers/activityController.js';
+import { onboardSingleCourse, onContentDeactivated } from '../src/intelligence/onboarding/courseOnboardingPipeline.js';
 
 const router = express.Router();
 
@@ -344,6 +345,9 @@ router.post('/', protect, authorize('instructor', 'admin'), async (req, res) => 
 
         await logActivity(userId, `Created a new course: ${course.title}`, 'course', course.title, course.id);
 
+        // Non-blocking Intelligence Onboarding — AI failure never prevents course creation
+        onboardSingleCourse(course.id).catch(err => console.error('[Intelligence] Non-blocking onboard failed:', err.message));
+
         res.status(201).json({
             success: true,
             course
@@ -396,6 +400,9 @@ router.put('/:id', protect, authorize('instructor', 'admin'), async (req, res) =
             data: validUpdateFields
         });
 
+        // Non-blocking Intelligence Refresh — AI failure never prevents course updates
+        onboardSingleCourse(course.id, { forceRefresh: true }).catch(err => console.error('[Intelligence] Non-blocking refresh failed:', err.message));
+
         res.json({
             success: true,
             course
@@ -421,6 +428,9 @@ router.delete('/:id', protect, authorize('instructor', 'admin'), async (req, res
         if (course.instructorId !== userId && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Not authorized to delete this course' });
         }
+
+        // Non-blocking Intelligence Deactivation before delete — preserves historical evidence
+        onContentDeactivated('COURSE', req.params.id).catch(err => console.error('[Intelligence] Non-blocking deactivation failed:', err.message));
 
         await prisma.course.delete({ where: { id: req.params.id } });
         

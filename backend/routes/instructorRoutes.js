@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '../lib/prisma.js';
 import { logActivity } from '../controllers/activityController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { onboardSingleCourse, onLessonModified } from '../src/intelligence/onboarding/courseOnboardingPipeline.js';
 
 const router = express.Router();
 
@@ -98,6 +99,9 @@ router.post('/courses', async (req, res) => {
         
         await logActivity(userId, `Created a new course: ${course.title}`, 'course', course.title, course.id);
 
+        // Non-blocking Intelligence Onboarding
+        onboardSingleCourse(course.id).catch(err => console.error('[Intelligence] Non-blocking onboard failed:', err.message));
+
         res.status(201).json({ success: true, data: course });
     } catch (error) {
         res.status(400).json({ success: false, message: error.message });
@@ -144,6 +148,9 @@ router.put('/courses/:id', async (req, res) => {
         
         await logActivity(userId, `Updated course: ${course.title}`, 'course', course.title, course.id);
 
+        // Non-blocking Intelligence Refresh
+        onboardSingleCourse(course.id, { forceRefresh: true }).catch(err => console.error('[Intelligence] Non-blocking refresh failed:', err.message));
+
         res.status(200).json({ success: true, data: course });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -179,6 +186,9 @@ router.post('/courses/:courseId/lessons', async (req, res) => {
         };
 
         const lesson = await prisma.lesson.create({ data: lessonData });
+
+        // Non-blocking Intelligence Lesson Indexing
+        onLessonModified(lesson.id, req.params.courseId, lessonData).catch(err => console.error('[Intelligence] Non-blocking lesson index failed:', err.message));
 
         res.status(201).json({ success: true, data: lesson });
     } catch (error) {
