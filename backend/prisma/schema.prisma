@@ -117,6 +117,7 @@ model User {
   skillPassport        SkillPassport?        @relation("UserSkillPassport")
   careerTargets        LearnerCareerTarget[] @relation("UserCareerTargets")
   cohortMemberships    CohortMember[]        @relation("UserCohortMemberships")
+  understandingAnalyses ConceptUnderstandingAnalysis[] @relation("UserUnderstandingAnalyses")
 }
 
 model LearnerProfile {
@@ -1647,4 +1648,27 @@ model CourseSkillMapping {
 
   @@index([courseId])
   @@index([skillId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Concept Understanding & Misconception Intelligence Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ConceptUnderstandingAnalysis {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation("UserUnderstandingAnalyses", fields: [userId], references: [id], onDelete: Cascade)
+  conceptName           String
+  explanationText       String
+  correctConcepts       Json
+  missingConcepts       Json
+  misconception         String?
+  confidence            Float    @default(0.9)
+  recommendedExplanation String
+  followUpQuestion      String
+  recommendedPractice   String
+  createdAt             DateTime @default(now())
+
+  @@index([userId])
+  @@index([conceptName])
 }
