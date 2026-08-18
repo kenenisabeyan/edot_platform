@@ -122,6 +122,7 @@ model User {
   assessmentInsights   AssessmentInsight[]   @relation("UserAssessmentInsights")
   instructorInsights   InstructorInsight[]   @relation("InstructorInsights")
   humanSupportTickets  HumanSupportTicket[]  @relation("UserHumanSupportTickets")
+  learningRoadmaps     LearningRoadmap[]     @relation("UserLearningRoadmaps")
 }
 
 model LearnerProfile {
@@ -206,6 +207,8 @@ model LearnerGoal {
   status       String         @default("active") // active, achieved, archived
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+
+  roadmaps     LearningRoadmap[]
 
   @@index([profileId])
 }
@@ -1785,4 +1788,29 @@ model HumanSupportTicket {
   @@index([userId])
   @@index([courseId])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Goal Intelligence & Dynamic Learning Roadmap Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LearningRoadmap {
+  id                    String      @id @default(uuid())
+  goalId                String
+  goal                  LearnerGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User        @relation("UserLearningRoadmaps", fields: [userId], references: [id], onDelete: Cascade)
+  currentPosition       String      @default("Intermediate Learner")
+  requiredSkills        Json
+  currentStrengths      Json
+  skillGaps             Json
+  recommendedPath       Json
+  milestones            Json
+  evidenceRequired      Json
+  disclaimer            String      @default("Roadmap estimated based on current progress. Timelines and career outcomes are non-guaranteed.")
+  updatedAt             DateTime    @updatedAt
+  createdAt             DateTime    @default(now())
+
+  @@index([userId])
+  @@index([goalId])
 }
