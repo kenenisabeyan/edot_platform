@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import PremiumModal from '../components/PremiumModal';
 import CourseFallbackThumbnail from '../components/CourseFallbackThumbnail';
 import CourseInsightsPanel from '../components/CourseInsightsPanel';
+import CourseIntelligenceStatusPanel from '../components/CourseIntelligenceStatusPanel';
 
 const CATEGORY_MAP = {
   "Social Science": {
@@ -156,6 +157,11 @@ export default function InstructorManageCourses() {
   const openInsights = (course) => {
     setActiveCourse(course);
     setModalType('insights');
+  };
+
+  const openOnboarding = (course) => {
+    setActiveCourse(course);
+    setModalType('onboarding');
   };
 
   const handleSubmitReview = async (courseId) => {
@@ -503,6 +509,13 @@ export default function InstructorManageCourses() {
                         >
                           <BarChart3 className="w-3.5 h-3.5" /> Intelligence Insights
                         </button>
+
+                        <button 
+                          onClick={() => openOnboarding(c)} 
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 font-bold rounded-2xl border transition-all duration-300 text-xs cursor-pointer bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" /> Onboarding Pipeline Status
+                        </button>
                       </div>
                     </div>
                   </motion.div>
@@ -698,6 +711,10 @@ export default function InstructorManageCourses() {
               <div className="overflow-y-auto overflow-x-hidden pr-2 space-y-3 custom-scrollbar flex-1">
                 {modalType === 'insights' && (
                   <CourseInsightsPanel courseId={activeCourse?.id} isDarkMode={isDarkMode} />
+                )}
+
+                {modalType === 'onboarding' && (
+                  <CourseIntelligenceStatusPanel courseId={activeCourse?.id} courseTitle={activeCourse?.title} isDarkMode={isDarkMode} />
                 )}
 
                 {modalType === 'lessons' && (
