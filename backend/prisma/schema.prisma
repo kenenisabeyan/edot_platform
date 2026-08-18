@@ -118,6 +118,7 @@ model User {
   careerTargets        LearnerCareerTarget[] @relation("UserCareerTargets")
   cohortMemberships    CohortMember[]        @relation("UserCohortMemberships")
   understandingAnalyses ConceptUnderstandingAnalysis[] @relation("UserUnderstandingAnalyses")
+  practiceSessions     AIPracticeSession[]   @relation("UserPracticeSessions")
 }
 
 model LearnerProfile {
@@ -1671,4 +1672,32 @@ model ConceptUnderstandingAnalysis {
 
   @@index([userId])
   @@index([conceptName])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT AI Practice Engine Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AIPracticeSession {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation("UserPracticeSessions", fields: [userId], references: [id], onDelete: Cascade)
+  courseId              String?
+  lessonId              String?
+  skillName             String   @default("General Knowledge")
+  practiceType          String   @default("APPLICATION")
+  difficulty            String   @default("INTERMEDIATE")
+  isAiGenerated         Boolean  @default(true)
+  instructorApproved    Boolean  @default(false)
+  status                String   @default("ACTIVE")
+  questions             Json
+  score                 Float?
+  feedback              String?
+  adaptiveAdjustment    String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@index([skillName])
+  @@index([status])
 }

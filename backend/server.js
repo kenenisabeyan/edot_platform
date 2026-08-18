@@ -58,6 +58,7 @@ import careerDomainRoutes from './src/intelligence/career/careerRoutes.js';
 import institutionDomainRoutes from './src/intelligence/institution/institutionRoutes.js';
 import skillGraphDomainRoutes from './src/intelligence/skills/skillGraphRoutes.js';
 import understandingDomainRoutes from './src/intelligence/understanding/understandingRoutes.js';
+import practiceDomainRoutes from './src/intelligence/practice/practiceRoutes.js';
 
 
 
@@ -171,6 +172,8 @@ app.use('/intelligence/skills', skillGraphDomainRoutes);
 app.use('/api/intelligence/skills', skillGraphDomainRoutes);
 app.use('/intelligence/understanding', understandingDomainRoutes);
 app.use('/api/intelligence/understanding', understandingDomainRoutes);
+app.use('/intelligence/practice', practiceDomainRoutes);
+app.use('/api/intelligence/practice', practiceDomainRoutes);
 app.use('/intelligence', healthDomainRoutes);
 app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);
