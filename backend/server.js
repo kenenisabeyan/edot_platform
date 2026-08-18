@@ -61,6 +61,7 @@ import understandingDomainRoutes from './src/intelligence/understanding/understa
 import practiceDomainRoutes from './src/intelligence/practice/practiceRoutes.js';
 import assessmentDomainRoutes from './src/intelligence/assessment/assessmentRoutes.js';
 import instructorIntelligenceDomainRoutes from './src/intelligence/instructor/instructorIntelligenceRoutes.js';
+import supportDomainRoutes from './src/intelligence/support/supportRoutes.js';
 
 
 
@@ -180,6 +181,8 @@ app.use('/intelligence/assessment', assessmentDomainRoutes);
 app.use('/api/intelligence/assessment', assessmentDomainRoutes);
 app.use('/instructor/intelligence', instructorIntelligenceDomainRoutes);
 app.use('/api/instructor/intelligence', instructorIntelligenceDomainRoutes);
+app.use('/intelligence/support', supportDomainRoutes);
+app.use('/api/intelligence/support', supportDomainRoutes);
 app.use('/intelligence', healthDomainRoutes);
 app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);

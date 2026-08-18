@@ -121,6 +121,7 @@ model User {
   practiceSessions     AIPracticeSession[]   @relation("UserPracticeSessions")
   assessmentInsights   AssessmentInsight[]   @relation("UserAssessmentInsights")
   instructorInsights   InstructorInsight[]   @relation("InstructorInsights")
+  humanSupportTickets  HumanSupportTicket[]  @relation("UserHumanSupportTickets")
 }
 
 model LearnerProfile {
@@ -1759,4 +1760,29 @@ model InstructorInsight {
   @@index([instructorId])
   @@index([courseId])
   @@index([severity])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EDOT Human + AI Support Escalation Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+model HumanSupportTicket {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation("UserHumanSupportTickets", fields: [userId], references: [id], onDelete: Cascade)
+  courseId              String?
+  lessonId              String?
+  triggerReason         String
+  confidenceScore       Float    @default(0.5)
+  userConsentGiven      Boolean  @default(false)
+  sharedContextSummary  Json
+  status                String   @default("OPEN")
+  assignedInstructorId  String?
+  resolutionNotes       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
 }
