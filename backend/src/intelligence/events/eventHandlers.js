@@ -6,7 +6,7 @@
 import { eventBus } from '../shared/eventBus.js';
 import { EventTypes } from '../shared/contracts.js';
 import { syncLearnerProfile } from '../profile/profileService.js';
-import { recalculateLearnerAnalytics } from '../analytics/analyticsService.js';
+import { getLearnerAnalytics } from '../analytics/analyticsService.js';
 
 export function initializeEventSubscribers() {
   // Sync profile when progress milestones occur
@@ -23,7 +23,7 @@ export function initializeEventSubscribers() {
       if (eventData.userId) {
         // Asynchronously update profile & analytics without blocking origin
         await syncLearnerProfile(eventData.userId).catch(() => {});
-        await recalculateLearnerAnalytics(eventData.userId).catch(() => {});
+        await getLearnerAnalytics(eventData.userId).catch(() => {});
       }
     });
   });

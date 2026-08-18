@@ -26,6 +26,20 @@ export class NotFoundError extends IntelligenceError {
   }
 }
 
+export class ForbiddenError extends IntelligenceError {
+  constructor(message = 'Access forbidden to requested intelligence resource') {
+    super(message, 403, 'FORBIDDEN_ERROR');
+    this.name = 'ForbiddenError';
+  }
+}
+
+export class UnauthorizedError extends IntelligenceError {
+  constructor(message = 'Authentication required for intelligence resource') {
+    super(message, 401, 'UNAUTHORIZED_ERROR');
+    this.name = 'UnauthorizedError';
+  }
+}
+
 export class AIServiceUnavailableError extends IntelligenceError {
   constructor(message = 'AI inference provider is unavailable or rate-limited') {
     super(message, 503, 'AI_SERVICE_UNAVAILABLE');

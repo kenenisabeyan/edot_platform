@@ -427,3 +427,5 @@ export async function getAtRiskLearnersDTO(limit = 20) {
     lastUpdatedAt: p.lastUpdatedAt
   }));
 }
+
+export const recalculateLearnerAnalytics = getLearnerAnalytics;
