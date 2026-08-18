@@ -265,8 +265,16 @@ router.post('/weaknesses', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Learning profile not found' });
     }
 
-    const weakness = await prisma.learnerWeakness.create({
-      data: {
+    const weakness = await prisma.learnerWeakness.upsert({
+      where: { profileId_topic: { profileId: profile.id, topic } },
+      update: {
+        category,
+        severity: severity || 'medium',
+        impactScore: impactScore || 0,
+        improvementPlan,
+        lastObservedAt: new Date()
+      },
+      create: {
         profileId: profile.id,
         topic,
         category,

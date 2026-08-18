@@ -42,6 +42,7 @@ import learningProfileRoutes from './routes/learningProfileRoutes.js';
 import mentorRoutes from './routes/mentorRoutes.js';
 import courseIntelligenceRoutes from './routes/courseIntelligenceRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
+import intelligenceRoutes from './routes/intelligenceRoutes.js';
 
 
 
@@ -122,6 +123,7 @@ app.use('/api/learning-profile', learningProfileRoutes);
 app.use('/api/mentor', mentorRoutes);
 app.use('/api/course-intelligence', courseIntelligenceRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/intelligence', intelligenceRoutes);
 
 
 

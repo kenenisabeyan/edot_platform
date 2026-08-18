@@ -30,14 +30,18 @@ async function callGemini(systemInstruction, promptText) {
 }
 
 async function getLearnerContext(userId) {
-  const [profile, enrollments, historyEvents, weaknessEntries] = await Promise.all([
+  const [profile, enrollments, historyEvents, weaknessEntries, latestSnapshot] = await Promise.all([
     prisma.learnerProfile.findUnique({ where: { userId } }),
     prisma.userCourseProgress.findMany({ where: { userId }, include: { course: true } }),
     prisma.learningHistoryEvent.findMany({ where: { userId }, orderBy: { occurredAt: 'desc' }, take: 8 }),
-    prisma.learnerWeakness.findMany({ where: { profile: { userId } }, orderBy: { impactScore: 'desc' }, take: 5 })
+    prisma.learnerWeakness.findMany({ where: { profile: { userId } }, orderBy: { impactScore: 'desc' }, take: 5 }),
+    prisma.learningProgressSnapshot.findFirst({
+      where: { userId },
+      orderBy: { generatedAt: 'desc' }
+    })
   ]);
 
-  return { profile, enrollments, historyEvents, weaknessEntries };
+  return { profile, enrollments, historyEvents, weaknessEntries, latestSnapshot };
 }
 
 router.post('/chat', protect, checkNotBlocked, async (req, res) => {
@@ -51,6 +55,10 @@ router.post('/chat', protect, checkNotBlocked, async (req, res) => {
     const activeCourses = learnerContext.enrollments.map((entry) => entry.course?.title).filter(Boolean);
     const recentHistory = learnerContext.historyEvents.map((entry) => `${entry.eventType}: ${entry.title}`).join(' | ');
     const weakAreas = learnerContext.weaknessEntries.map((entry) => entry.topic).join(', ');
+    const snap = learnerContext.latestSnapshot;
+    const progressSummary = snap
+      ? `overall progress ${Math.round(snap.overallProgress)}%, quiz avg ${Math.round(snap.quizAverage)}%, study streak ${snap.studyStreak} days, weekly hours ${snap.weeklyStudyHours.toFixed(1)}`
+      : 'no progress snapshot yet';
 
     let conversation = null;
     if (conversationId) {
@@ -81,6 +89,7 @@ router.post('/chat', protect, checkNotBlocked, async (req, res) => {
 
     const systemInstruction = `You are EDOT Mentor AI, a personal teacher for this learner. You should act like an encouraging, insightful tutor.
     Learner profile: academicLevel=${profile?.academicLevel || 'Intermediate'}, goals=${JSON.stringify(profile?.learningGoals || [])}, strengths=${JSON.stringify(profile?.strengths || [])}, weaknesses=${JSON.stringify(profile?.weaknesses || [])}, studyHabits=${JSON.stringify(profile?.studyHabits || {})}.
+    Current progress metrics: ${progressSummary}.
     Current courses: ${activeCourses.join(', ') || 'No active course data'}.
     Recent learning history: ${recentHistory || 'No recent learning history'}.
     Weak areas: ${weakAreas || 'No major weak areas detected'}.

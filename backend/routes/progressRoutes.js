@@ -1,6 +1,7 @@
 import express from 'express';
 import { protect, guardActiveEnrollment, checkNotBlocked } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
+import { syncLearnerProfile } from '../services/profileSyncService.js';
 
 const router = express.Router();
 
@@ -81,6 +82,9 @@ router.post('/ping', protect, checkNotBlocked, guardActiveEnrollment, async (req
                 requiredSeconds: requiredDurationSeconds
             }
         });
+
+        // Fire-and-forget: update LearnerProfile asynchronously — never blocks ping
+        syncLearnerProfile(userId).catch(() => {});
     } catch (err) {
         console.error('Ping Error:', err);
         res.status(500).json({ success: false, message: 'Server error processing progress heartbeat' });

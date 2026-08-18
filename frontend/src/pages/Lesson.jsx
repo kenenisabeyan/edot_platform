@@ -11,6 +11,7 @@ import PremiumModal from '../components/PremiumModal';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import Markdown from 'markdown-to-jsx';
+import sessionTracker from '../services/sessionTracker.js';
 
 export default function Lesson() {
   const isDarkMode = useThemeMode();
@@ -38,6 +39,14 @@ export default function Lesson() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [aiQuestion, setAiQuestion] = useState('');
+
+  // Wave 3: Learning session tracking — start on lesson load, end on unmount
+  useEffect(() => {
+    if (courseId) {
+      sessionTracker.start({ courseId, lessonId: id, pageContext: 'lesson' });
+    }
+    return () => { sessionTracker.end(); };
+  }, [id, courseId]);
   const [aiAnswer, setAiAnswer] = useState('');
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiChatHistory, setAiChatHistory] = useState([]);

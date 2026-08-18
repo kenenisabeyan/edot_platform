@@ -99,6 +99,12 @@ model User {
   mentorConversations  MentorConversation[]
   mentorInteractions    MentorInteraction[]
   courseIntelligenceDocuments CourseIntelligenceDocument[]
+
+  // Intelligence Core relations
+  recommendations      RecommendationResult[]
+  quizAttempts         QuizAttempt[]
+  learningSessions     LearningSession[]
+  analyticsReport      LearnerAnalyticsReport?
 }
 
 model LearnerProfile {
@@ -169,6 +175,7 @@ model LearnerWeakness {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  @@unique([profileId, topic])
   @@index([profileId])
 }
 
@@ -1038,3 +1045,87 @@ model FlashcardDeck {
   @@index([userId])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INTELLIGENCE CORE MODELS  (Waves 1–4 additions — additive only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Wave 1 — Recommendation feedback loop
+model RecommendationResult {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendationType  String   // course, lesson, skill, career
+  targetId            String?  // courseId or skill name
+  targetTitle         String
+  reason              String
+  score               Float    @default(0)
+  wasActedOn          Boolean  @default(false)
+  actionType          String?  // enrolled, viewed, dismissed
+  actedAt             DateTime?
+  createdAt           DateTime @default(now())
+
+  @@index([userId])
+  @@index([recommendationType])
+  @@index([createdAt])
+}
+
+// Wave 2 — Per-question quiz attempt history (enables weak-topic detection)
+model QuizAttempt {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId         String
+  lessonId         String?
+  quizId           String?
+  questionIndex    Int
+  question         String
+  selectedAnswer   String
+  correctAnswer    String
+  isCorrect        Boolean
+  topic            String?  // extracted topic tag for weakness detection
+  timeSpentSeconds Int      @default(0)
+  attemptNumber    Int      @default(1)
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([userId, courseId])
+}
+
+// Wave 3 — Learning session time-on-task tracking
+model LearningSession {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String?
+  lessonId        String?
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  durationSeconds Int      @default(0)
+  deviceType      String?
+  pageContext     String?  // lesson, quiz, mentor, course-overview
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([userId, courseId])
+}
+
+// Wave 4 — Analytics engine output / at-risk scoring
+model LearnerAnalyticsReport {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riskLevel           String   @default("low")   // low, medium, high, critical
+  riskFactors         Json?
+  engagementScore     Float    @default(0)
+  consistencyScore    Float    @default(0)
+  momentumScore       Float    @default(0)
+  predictedCompletion Json?    // { courseId, predictedDays, confidence }[]
+  atRiskSince         DateTime?
+  generatedAt         DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([riskLevel])
+  @@index([generatedAt])
+}
