@@ -6,7 +6,8 @@ import api from '../utils/api';
 import { 
   ArrowLeft, CheckCircle2, ChevronRight, Save, 
   BookOpen, LayoutList, DollarSign, PlusCircle, Banknote,
-  PlayCircle, Trash2, Tag, Image as ImageIcon, Send, FileText
+  PlayCircle, Trash2, Tag, Image as ImageIcon, Send, FileText,
+  Sparkles
 } from 'lucide-react';
 import QuizBuilder from '../components/QuizBuilder';
 import ReactPlayer from 'react-player';
@@ -55,6 +56,10 @@ export default function InstructorCourseBuilder() {
   const [newPhaseName, setNewPhaseName] = useState('');
   const [showPhaseInput, setShowPhaseInput] = useState(false);
   const [lastFetchedDurationUrl, setLastFetchedDurationUrl] = useState('');
+  
+  const [loadingOutline, setLoadingOutline] = useState(false);
+  const [loadingLessonContent, setLoadingLessonContent] = useState(false);
+  const [suggestions, setSuggestions] = useState({});
 
   const resolveVideoUrl = (url) => {
     if (!url) return '';

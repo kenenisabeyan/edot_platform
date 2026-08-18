@@ -29,6 +29,9 @@ import MessagesView from './MessagesView';
 import NoticeView from './NoticeView';
 import SettingsView from './SettingsView';
 import CertificatesView from './CertificatesView';
+import LearningProfileCard from '../components/LearningProfileCard';
+import IntelligentLearningAnalytics from '../components/IntelligentLearningAnalytics';
+import RecommendationEnginePanel from '../components/RecommendationEnginePanel';
 
 const DB_CATEGORY_MAP = {
   "Social Sciences": "Social Science",
@@ -574,7 +577,8 @@ export default function StudentDashboard() {
      percentile: dashboardData?.progress?.percentile || 0,
      recentCourses: dashboardData?.progress?.recentCourses || [],
      achievements: achievements,
-     certificates: certificates
+     certificates: certificates,
+     intelligence: dashboardData?.intelligence || {}
   };
 
   const totalEnrolled = dashboardData?.overview?.totalEnrolled || 0;
@@ -685,22 +689,29 @@ export default function StudentDashboard() {
         const unclaimedCourses = completedCourses.filter(c => !claimedCourseIds.includes(c.course?.id || c.courseId));
 
         return (
-          <StudentOverview 
-            user={user}
-            enrolledCourses={enrolledCourses}
-            completedCourses={unclaimedCourses}
-            totalEnrolled={totalEnrolled}
-            totalLessonsCompleted={totalLessonsCompleted}
-            averageProgress={averageProgress}
-            isDarkMode={isDarkMode}
-            setActiveTab={setActiveTab}
-            dashboardStats={dashboardStats}
-            certificateSummary={{
-              claimed: certificateEarnedCount,
-              readyToClaim: readyToClaimCount,
-              total: totalCertificateProgress
-            }}
-          />
+          <div className="space-y-6">
+            <StudentOverview 
+              user={user}
+              enrolledCourses={enrolledCourses}
+              completedCourses={unclaimedCourses}
+              totalEnrolled={totalEnrolled}
+              totalLessonsCompleted={totalLessonsCompleted}
+              averageProgress={averageProgress}
+              isDarkMode={isDarkMode}
+              setActiveTab={setActiveTab}
+              dashboardStats={dashboardStats}
+              certificateSummary={{
+                claimed: certificateEarnedCount,
+                readyToClaim: readyToClaimCount,
+                total: totalCertificateProgress
+              }}
+            />
+            <div className="space-y-6">
+              <IntelligentLearningAnalytics enrolledCourses={enrolledCourses} dashboardStats={dashboardStats} isDarkMode={isDarkMode} />
+              <RecommendationEnginePanel isDarkMode={isDarkMode} />
+              <LearningProfileCard />
+            </div>
+          </div>
         );
       }
       case 'catalog': {

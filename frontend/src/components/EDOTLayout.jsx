@@ -30,7 +30,9 @@ import {
   HeartHandshake,
   ShieldCheck,
   Target,
-  Video
+  Video,
+  Sparkles,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -297,6 +299,8 @@ export default function EDOTLayout() {
         { name: 'Library', icon: BookOpen, path: '/dashboard/library' },
         { name: 'Message', icon: MessageSquare, path: '/dashboard/messages' },
         { name: 'Certificates', icon: Award, path: '/dashboard/certificates' },
+        { name: 'Study Tools', icon: Sparkles, path: '/dashboard/study-tools' },
+        { name: 'Career Hub', icon: Briefcase, path: '/dashboard/career-hub' },
         { name: 'Ecosystem Nexus', icon: ShieldCheck, path: '/dashboard/ecosystem' },
       ],
       showFinance: false,

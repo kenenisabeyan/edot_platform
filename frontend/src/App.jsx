@@ -62,6 +62,10 @@ const LiveClassesView = lazy(() => import('./pages/LiveClassesView'));
 const EcosystemView = lazy(() => import('./pages/EcosystemView'));
 const StudyGoalView = lazy(() => import('./pages/StudyGoalView'));
 const AchievementsView = lazy(() => import('./pages/AchievementsView'));
+const StudyTools = lazy(() => import('./pages/StudyTools'));
+const CareerCenter = lazy(() => import('./pages/CareerCenter'));
+
+
 
 import ErrorBoundary from './components/ErrorBoundary';
 import ChatbotWidget from './components/ChatbotWidget';
@@ -306,9 +310,13 @@ export default function App() {
           <Route path="messages" element={<Suspense fallback={<LazyLoadingFallback />}><MessagesView /></Suspense>} />
           <Route path="certificates" element={<Suspense fallback={<LazyLoadingFallback />}><CertificatesView /></Suspense>} />
           <Route path="study-goal" element={<Suspense fallback={<LazyLoadingFallback />}><StudyGoalView /></Suspense>} />
+
           <Route path="achievements" element={<Suspense fallback={<LazyLoadingFallback />}><AchievementsView /></Suspense>} />
+          <Route path="study-tools" element={<Suspense fallback={<LazyLoadingFallback />}><StudyTools /></Suspense>} />
+          <Route path="career-hub" element={<Suspense fallback={<LazyLoadingFallback />}><CareerCenter /></Suspense>} />
           <Route path="profile" element={<Suspense fallback={<LazyLoadingFallback />}><ProfileView /></Suspense>} />
           <Route path="live-classes" element={<Suspense fallback={<LazyLoadingFallback />}><LiveClassesView /></Suspense>} />
+
           {/* Sponsor Only Routes */}
           <Route element={<ProtectedRoute allowedRoles={['sponsor']} />}>
             <Route path="sponsor" element={<Suspense fallback={<LazyLoadingFallback />}><SponsorDashboard /></Suspense>} />

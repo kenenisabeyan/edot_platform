@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { buildStudentIntelligenceSummary } from './studentAnalyticsService.js';
 
 class OptimizedDashboardService {
     /**
@@ -191,7 +192,10 @@ class OptimizedDashboardService {
                 achievementsData,
                 recentMessages,
                 unreadCount,
-                weeklyProgress
+                weeklyProgress,
+                profile,
+                historyEvents,
+                weaknessEntries
             ] = await Promise.all([
                 // Only select needed fields, take top 20 courses
                 prisma.userCourseProgress.findMany({
@@ -243,7 +247,10 @@ class OptimizedDashboardService {
                 prisma.progressLog.findMany({
                     where: { userId, updatedAt: { gte: startOfWeek } },
                     select: { updatedAt: true }
-                })
+                }),
+                prisma.learnerProfile.findUnique({ where: { userId } }),
+                prisma.learningHistoryEvent.findMany({ where: { userId }, orderBy: { occurredAt: 'desc' }, take: 8 }),
+                prisma.learnerWeakness.findMany({ where: { profile: { userId } }, orderBy: { impactScore: 'desc' }, take: 5 })
             ]);
 
             // Calculate stats efficiently
@@ -274,6 +281,23 @@ class OptimizedDashboardService {
                 hours: Math.round((weeklyDataMap[day] * 0.5) * 10) / 10
             }));
 
+            const analyticsSummary = buildStudentIntelligenceSummary({
+                enrollments: userProgress.map((entry) => ({
+                    ...entry,
+                    course: entry.course,
+                    progress: entry.progress,
+                    completed: entry.completed,
+                    passedFinalExam: entry.passedFinalExam,
+                    score: entry.score,
+                    studyHours: 0
+                })),
+                progressLogs: weeklyProgress,
+                profile,
+                historyEvents,
+                weaknesses: weaknessEntries,
+                weeklyStudyData
+            });
+
             return {
                 profile: {
                     id: userId
@@ -297,6 +321,7 @@ class OptimizedDashboardService {
                     studyGoal: userSettings?.weeklyStudyGoal || 10,
                     daysStudied: weeklyStudyData.filter(d => d.hours > 0).length
                 },
+                intelligence: analyticsSummary,
                 sidebarCounts: {
                     messages: unreadCount,
                     certificates: userCertificates.length,

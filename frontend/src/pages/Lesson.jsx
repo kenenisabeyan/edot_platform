@@ -3,13 +3,14 @@ import useThemeMode from '../hooks/useThemeMode';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { PlayCircle, FileText, CheckCircle2, Lock, Unlock, ArrowLeft, ChevronDown, ChevronUp, CheckSquare, BadgeAlert, Award, ExternalLink, X } from 'lucide-react';
+import { PlayCircle, FileText, CheckCircle2, Lock, Unlock, ArrowLeft, ChevronDown, ChevronUp, CheckSquare, BadgeAlert, Award, ExternalLink, X, Send, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SmartVideoPlayer from '../components/SmartVideoPlayer';
 import ThemeDropdown from '../components/ThemeDropdown';
 import PremiumModal from '../components/PremiumModal';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
+import Markdown from 'markdown-to-jsx';
 
 export default function Lesson() {
   const isDarkMode = useThemeMode();
@@ -33,6 +34,242 @@ export default function Lesson() {
   const [generatingCertificate, setGeneratingCertificate] = useState(false);
   const [certificateData, setCertificateData] = useState(null);
   const [lessonMaterials, setLessonMaterials] = useState({});
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedLessonId, setSelectedLessonId] = useState('');
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [aiChatHistory, setAiChatHistory] = useState([]);
+  const [aiMode, setAiMode] = useState('chat'); // 'chat' | 'quiz'
+  const [mentorConversationId, setMentorConversationId] = useState(null);
+  const [aiQuiz, setAiQuiz] = useState([]);
+  const [aiQuizAnswers, setAiQuizAnswers] = useState({});
+  const [aiQuizSubmitted, setAiQuizSubmitted] = useState(false);
+
+  // Auto-select lesson context
+  useEffect(() => {
+    if (playingVideoId) {
+      setSelectedLessonId(playingVideoId);
+    } else if (course?.lessons?.length > 0 && !selectedLessonId) {
+      setSelectedLessonId(course.lessons[0].id);
+    }
+  }, [playingVideoId, course, selectedLessonId]);
+
+  const formatPracticeQuestions = (payload) => {
+    const questions = payload?.questions || [];
+    if (!questions.length) return 'Practice questions are ready.';
+
+    return questions.map((item, index) => (
+      `**${index + 1}.** ${item.question}\n\n` +
+      `**Answer:** ${item.answer}\n\n` +
+      `*Why:* ${item.explanation}`
+    )).join('\n\n');
+  };
+
+  const formatNextSteps = (payload) => {
+    const steps = payload?.steps || [];
+    if (!steps.length) return 'A personalized study path is ready.';
+    return steps.map((step, index) => `**${index + 1}.** ${step}`).join('\n');
+  };
+
+  const handleExplainLesson = async () => {
+    const targetLesson = course?.lessons?.find(l => l.id === selectedLessonId);
+    if (!targetLesson) {
+      toast.error("Please select a lesson first.");
+      return;
+    }
+    setLoadingAi(true);
+    setAiMode('chat');
+    setAiAnswer('');
+    try {
+      const { data } = await api.post('/api/mentor/chat', {
+        message: `I'm studying "${targetLesson.title}". Please explain the main concepts in a clear and encouraging way, highlighting the most important terms and the best way to approach this lesson.`,
+        courseId,
+        lessonId: targetLesson.id,
+        conversationId: mentorConversationId
+      });
+      if (data.success) {
+        const reply = data.data?.reply || 'I am ready to guide you.';
+        setAiAnswer(reply);
+        setAiChatHistory(prev => [
+          ...prev,
+          { role: 'user', content: `Explain: ${targetLesson.title}` },
+          { role: 'assistant', content: reply }
+        ]);
+        setMentorConversationId(data.data?.conversationId || mentorConversationId);
+      }
+    } catch (err) {
+      console.error("AI Error:", err);
+      toast.error("Failed to generate explanation. Make sure the API key is configured.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleSummarizeLesson = async () => {
+    const targetLesson = course?.lessons?.find(l => l.id === selectedLessonId);
+    if (!targetLesson) {
+      toast.error("Please select a lesson first.");
+      return;
+    }
+    setLoadingAi(true);
+    setAiMode('chat');
+    setAiAnswer('');
+    try {
+      const { data } = await api.post('/api/mentor/chat', {
+        message: `Please summarize "${targetLesson.title}" into a concise study guide with the core ideas, definitions, and an easy-to-follow outline.`,
+        courseId,
+        lessonId: targetLesson.id,
+        conversationId: mentorConversationId
+      });
+      if (data.success) {
+        const reply = data.data?.reply || 'Here is your summary.';
+        setAiAnswer(reply);
+        setAiChatHistory(prev => [
+          ...prev,
+          { role: 'user', content: `Summarize: ${targetLesson.title}` },
+          { role: 'assistant', content: reply }
+        ]);
+        setMentorConversationId(data.data?.conversationId || mentorConversationId);
+      }
+    } catch (err) {
+      console.error("AI Error:", err);
+      toast.error("Failed to generate summary.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleAskQuestion = async (e) => {
+    if (e) e.preventDefault();
+    if (!aiQuestion.trim()) return;
+    const targetLesson = course?.lessons?.find(l => l.id === selectedLessonId);
+    if (!targetLesson) {
+      toast.error("Please select a lesson first.");
+      return;
+    }
+    const questionText = aiQuestion.trim();
+    setAiQuestion('');
+    setLoadingAi(true);
+    setAiMode('chat');
+    
+    setAiChatHistory(prev => [...prev, { role: 'user', content: questionText }]);
+    try {
+      const { data } = await api.post('/api/mentor/chat', {
+        message: questionText,
+        courseId,
+        lessonId: targetLesson.id,
+        conversationId: mentorConversationId
+      });
+      if (data.success) {
+        const reply = data.data?.reply || 'I am here to help.';
+        setAiAnswer(reply);
+        setAiChatHistory(prev => [
+          ...prev,
+          { role: 'assistant', content: reply }
+        ]);
+        setMentorConversationId(data.data?.conversationId || mentorConversationId);
+      }
+    } catch (err) {
+      console.error("AI Error:", err);
+      toast.error("Failed to get answer from AI mentor.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleGeneratePracticeQuestions = async () => {
+    const targetLesson = course?.lessons?.find(l => l.id === selectedLessonId);
+    if (!targetLesson) {
+      toast.error("Please select a lesson first.");
+      return;
+    }
+    setLoadingAi(true);
+    setAiMode('chat');
+    setAiAnswer('');
+    try {
+      const { data } = await api.post('/api/mentor/practice-questions', {
+        topic: targetLesson.title,
+        level: 'Intermediate',
+        courseTitle: course?.title
+      });
+      if (data.success) {
+        const reply = formatPracticeQuestions(data.data);
+        setAiAnswer(reply);
+        setAiChatHistory(prev => [
+          ...prev,
+          { role: 'user', content: `Practice questions: ${targetLesson.title}` },
+          { role: 'assistant', content: reply }
+        ]);
+      }
+    } catch (err) {
+      console.error("AI Error:", err);
+      toast.error("Failed to generate practice questions.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleGetNextSteps = async () => {
+    const targetLesson = course?.lessons?.find(l => l.id === selectedLessonId);
+    if (!targetLesson) {
+      toast.error("Please select a lesson first.");
+      return;
+    }
+    setLoadingAi(true);
+    setAiMode('chat');
+    setAiAnswer('');
+    try {
+      const { data } = await api.post('/api/mentor/next-steps', {
+        topic: targetLesson.title
+      });
+      if (data.success) {
+        const reply = formatNextSteps(data.data);
+        setAiAnswer(reply);
+        setAiChatHistory(prev => [
+          ...prev,
+          { role: 'user', content: `Next steps: ${targetLesson.title}` },
+          { role: 'assistant', content: reply }
+        ]);
+      }
+    } catch (err) {
+      console.error("AI Error:", err);
+      toast.error("Failed to generate next steps.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleGenerateQuiz = async () => {
+    const targetLesson = course?.lessons?.find(l => l.id === selectedLessonId);
+    if (!targetLesson) {
+      toast.error("Please select a lesson first.");
+      return;
+    }
+    setLoadingAi(true);
+    setAiMode('quiz');
+    setAiQuiz([]);
+    setAiQuizAnswers({});
+    setAiQuizSubmitted(false);
+    const textForQuiz = `${targetLesson.title}\n${targetLesson.description || ''}\n${targetLesson.readingMaterials || ''}`;
+    try {
+      const { data } = await api.post('/api/ai/quiz', {
+        text: textForQuiz,
+        difficulty: 'Intermediate'
+      });
+      if (data.success && data.quiz) {
+         setAiQuiz(data.quiz);
+      } else {
+         toast.error("Failed to generate quiz questions.");
+      }
+    } catch (err) {
+      console.error("AI Error:", err);
+      toast.error("Failed to generate AI quiz.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
 
   const fetchMaterials = async (lessonId) => {
     if (lessonMaterials[lessonId]) return;
@@ -724,6 +961,327 @@ export default function Lesson() {
                    })()}
                 </div>
       </PremiumModal>
+
+      {/* Floating AI Mentor Button */}
+      <motion.button
+        whileHover={{ scale: 1.08, boxShadow: '0px 0px 20px rgba(249, 115, 22, 0.4)' }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsDrawerOpen(true)}
+        className="fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-[#EA580C] to-[#FDBA74] text-white flex items-center justify-center shadow-[0_10px_25px_rgba(234,88,12,0.3)] hover:shadow-[0_15px_35px_rgba(234,88,12,0.5)] border border-[#EA580C]/30 cursor-pointer"
+      >
+        <span className="relative flex h-3 w-3 absolute -top-1 -right-1">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+        </span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+           <path d="M12 2a10 10 0 0 1 7.54 16.59c-.24.25-.34.58-.29.91l.43 2.76c.06.39-.32.69-.69.54l-2.76-1.1c-.33-.13-.7-.07-.97.12A10 10 0 1 1 12 2z"/>
+           <path d="M8 11h8"/>
+           <path d="M8 15h6"/>
+           <path d="M9 7h1"/>
+        </svg>
+      </motion.button>
+
+      {/* Collapsible Side Drawer */}
+      <AnimatePresence>
+        {isDrawerOpen && (
+           <motion.div
+             initial={{ x: '100%' }}
+             animate={{ x: 0 }}
+             exit={{ x: '100%' }}
+             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+             className={`fixed top-0 right-0 z-50 w-full sm:w-[460px] h-full shadow-2xl flex flex-col border-l transition-colors duration-300 ${
+               isDarkMode ? 'bg-[#0B1120] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'
+             }`}
+           >
+             {/* Drawer Header */}
+             <div className={`p-5 flex items-center justify-between border-b ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#EA580C] to-[#FDBA74] flex items-center justify-center shadow-md">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                         <path d="M12 2a10 10 0 0 1 7.54 16.59c-.24.25-.34.58-.29.91l.43 2.76c.06.39-.32.69-.69.54l-2.76-1.1c-.33-.13-.7-.07-.97.12A10 10 0 1 1 12 2z"/>
+                      </svg>
+                   </div>
+                   <div>
+                      <h3 className="font-black text-base tracking-tight">EDOT Mentor AI</h3>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Personal Study Assistant</p>
+                   </div>
+                </div>
+                <button 
+                   onClick={() => setIsDrawerOpen(false)}
+                   className={`p-2 rounded-full transition-colors cursor-pointer ${isDarkMode ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-slate-200 text-slate-600'}`}
+                >
+                   <X size={20} />
+                </button>
+             </div>
+
+             {/* Drawer Body - Scrollable */}
+             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                {/* Lesson Selector */}
+                <div className="space-y-2">
+                   <label className={`text-xs font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Select Lesson Context</label>
+                   <select
+                      value={selectedLessonId}
+                      onChange={(e) => {
+                         setSelectedLessonId(e.target.value);
+                         setAiAnswer('');
+                         setAiChatHistory([]);
+                         setMentorConversationId(null);
+                         setAiQuiz([]);
+                         setAiQuizAnswers({});
+                         setAiQuizSubmitted(false);
+                      }}
+                      className={`w-full p-3 rounded-xl border text-sm font-bold focus:outline-none transition-all ${
+                        isDarkMode ? 'bg-[#121A2F] border-white/10 text-white focus:border-[#EA580C]' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-[#EA580C]'
+                      }`}
+                   >
+                      {course.lessons.map(l => (
+                         <option key={l.id} value={l.id}>{l.title}</option>
+                      ))}
+                   </select>
+                </div>
+
+                {/* Quick Actions Panel */}
+                <div className="grid grid-cols-2 gap-3">
+                   <button
+                      onClick={handleExplainLesson}
+                      disabled={loadingAi}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-2 text-center cursor-pointer ${
+                        isDarkMode 
+                           ? 'bg-slate-900/60 border-white/5 hover:border-[#EA580C]/40 text-slate-200 hover:text-white' 
+                           : 'bg-white border-slate-200 hover:border-[#EA580C]/40 text-slate-700 hover:text-[#EA580C]'
+                      }`}
+                   >
+                      <span className="text-xl">💡</span>
+                      Explain Concept
+                   </button>
+                   <button
+                      onClick={handleSummarizeLesson}
+                      disabled={loadingAi}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-2 text-center cursor-pointer ${
+                        isDarkMode 
+                           ? 'bg-slate-900/60 border-white/5 hover:border-[#EA580C]/40 text-slate-200 hover:text-white' 
+                           : 'bg-white border-slate-200 hover:border-[#EA580C]/40 text-slate-700 hover:text-[#EA580C]'
+                      }`}
+                   >
+                      <span className="text-xl">📝</span>
+                      Summarize Lesson
+                   </button>
+                   <button
+                      onClick={handleGeneratePracticeQuestions}
+                      disabled={loadingAi}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-2 text-center cursor-pointer ${
+                        isDarkMode 
+                           ? 'bg-slate-900/60 border-white/5 hover:border-[#EA580C]/40 text-slate-200 hover:text-white' 
+                           : 'bg-white border-slate-200 hover:border-[#EA580C]/40 text-slate-700 hover:text-[#EA580C]'
+                      }`}
+                   >
+                      <span className="text-xl">🎯</span>
+                      Practice Questions
+                   </button>
+                   <button
+                      onClick={handleGetNextSteps}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-2 text-center cursor-pointer ${
+                        isDarkMode 
+                           ? 'bg-slate-900/60 border-white/5 hover:border-[#EA580C]/40 text-slate-200 hover:text-white' 
+                           : 'bg-white border-slate-200 hover:border-[#EA580C]/40 text-slate-700 hover:text-[#EA580C]'
+                      }`}
+                   >
+                      <span className="text-xl">🚀</span>
+                      Next Steps
+                   </button>
+                   <button
+                      onClick={() => {
+                        setAiMode('chat');
+                        setAiAnswer('');
+                        setAiChatHistory([]);
+                      }}
+                      className={`p-3 rounded-2xl border text-xs font-black transition-all flex flex-col items-center justify-center gap-2 text-center cursor-pointer ${
+                        isDarkMode 
+                           ? 'bg-slate-900/60 border-white/5 hover:border-[#EA580C]/40 text-slate-200 hover:text-white' 
+                           : 'bg-white border-slate-200 hover:border-[#EA580C]/40 text-slate-700 hover:text-[#EA580C]'
+                      }`}
+                   >
+                      <span className="text-xl">💬</span>
+                      Interactive Chat Q&A
+                   </button>
+                </div>
+
+                <div className="h-px bg-slate-250 dark:bg-slate-800 my-4" />
+
+                {/* Assistant Viewport */}
+                <div className="flex-1 flex flex-col min-h-[250px]">
+                   {loadingAi ? (
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3">
+                         <div className="w-10 h-10 border-4 border-[#EA580C] border-t-transparent rounded-full animate-spin"></div>
+                         <p className="text-xs font-bold text-slate-400">Synthesizing learning objectives...</p>
+                      </div>
+                   ) : aiMode === 'chat' ? (
+                      <div className="space-y-4">
+                         {/* Conversations history or placeholder */}
+                         {aiChatHistory.length === 0 ? (
+                            <div className={`p-5 rounded-2xl border text-center text-xs font-semibold ${isDarkMode ? 'bg-slate-900/40 border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200/80 text-slate-500'}`}>
+                               👋 Hello! I am your personal study mentor. Select a topic, ask any question about the lesson, or choose a quick action to start.
+                            </div>
+                         ) : (
+                            <div className="space-y-4">
+                               {aiChatHistory.map((chat, cIdx) => (
+                                  <div key={cIdx} className={`flex flex-col ${chat.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                     <span className="text-[10px] font-bold text-slate-400 uppercase mb-1">{chat.role === 'user' ? 'You' : 'Mentor AI'}</span>
+                                     <div className={`p-4 rounded-2xl text-xs leading-relaxed max-w-[90%] shadow-sm ${
+                                       chat.role === 'user' 
+                                          ? 'bg-[#EA580C] text-white rounded-tr-none' 
+                                          : (isDarkMode ? 'bg-[#121A2F] border border-white/5 text-slate-200 rounded-tl-none' : 'bg-slate-100 text-slate-700 rounded-tl-none')
+                                     }`}>
+                                        {chat.role === 'user' ? (
+                                           chat.content
+                                        ) : (
+                                           <Markdown
+                                              options={{
+                                                 forceBlock: true,
+                                                 overrides: {
+                                                    strong: {
+                                                       component: 'strong',
+                                                       props: { className: 'font-extrabold text-[#00D4FF] dark:text-[#EA580C]' }
+                                                    },
+                                                    em: {
+                                                       component: 'em',
+                                                       props: { className: 'font-bold italic text-amber-500' }
+                                                    },
+                                                    ul: {
+                                                       component: 'ul',
+                                                       props: { className: 'list-disc pl-4 my-1 space-y-1' }
+                                                    },
+                                                    ol: {
+                                                       component: 'ol',
+                                                       props: { className: 'list-decimal pl-4 my-1 space-y-1' }
+                                                    },
+                                                    p: {
+                                                       component: 'p',
+                                                       props: { className: 'mb-1 last:mb-0' }
+                                                    }
+                                                 }
+                                              }}
+                                           >
+                                              {chat.content}
+                                           </Markdown>
+                                        )}
+                                     </div>
+                                  </div>
+                               ))}
+                            </div>
+                         )}
+                      </div>
+                   ) : (
+                      /* Interactive Quiz UI */
+                      <div className="space-y-6">
+                         {aiQuiz.length === 0 ? (
+                            <div className="text-center text-xs text-slate-400 py-8">Generate practice quiz to test your comprehension!</div>
+                         ) : (
+                            <div className="space-y-6">
+                               <div className="flex justify-between items-center">
+                                  <h4 className="text-sm font-black">Practice Assessment</h4>
+                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/10 text-[#EA580C]">5 Questions</span>
+                               </div>
+                               {aiQuiz.map((q, qIdx) => (
+                                  <div key={qIdx} className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-[#121A2F]/50 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                                     <p className="text-xs font-black mb-3">{qIdx + 1}. {q.question}</p>
+                                     <div className="space-y-2">
+                                        {q.options.map((opt, oIdx) => {
+                                           const isSelected = aiQuizAnswers[qIdx] === opt;
+                                           const isCorrect = opt === q.correctAnswer;
+                                           let optClass = isDarkMode 
+                                              ? 'bg-slate-900 border-white/5 hover:border-[#EA580C]/40 text-slate-300' 
+                                              : 'bg-white border-slate-200 hover:border-[#EA580C]/40 text-slate-600';
+                                           
+                                           if (isSelected) {
+                                              optClass = 'border-[#EA580C] bg-[#EA580C]/10 text-[#EA580C]';
+                                           }
+                                           if (aiQuizSubmitted) {
+                                              if (isCorrect) {
+                                                 optClass = 'border-emerald-500 bg-emerald-500/10 text-emerald-500';
+                                              } else if (isSelected) {
+                                                 optClass = 'border-rose-500 bg-rose-500/10 text-rose-500';
+                                              }
+                                           }
+
+                                           return (
+                                              <button
+                                                 key={oIdx}
+                                                 disabled={aiQuizSubmitted}
+                                                 onClick={() => setAiQuizAnswers(prev => ({ ...prev, [qIdx]: opt }))}
+                                                 className={`w-full text-left p-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${optClass}`}
+                                              >
+                                                 <span>{opt}</span>
+                                                 {aiQuizSubmitted && isCorrect && <span className="text-emerald-500">✓</span>}
+                                                 {aiQuizSubmitted && isSelected && !isCorrect && <span className="text-rose-500">✗</span>}
+                                              </button>
+                                           );
+                                        })}
+                                     </div>
+                                     {aiQuizSubmitted && (
+                                        <div className="mt-3 p-3 rounded-xl bg-slate-900/40 text-[11px] font-medium text-slate-350 leading-relaxed border-l-2 border-amber-500">
+                                           💡 {q.explanation}
+                                        </div>
+                                     )}
+                                  </div>
+                               ))}
+
+                               {!aiQuizSubmitted ? (
+                                  <button
+                                     onClick={() => {
+                                        if (Object.keys(aiQuizAnswers).length < aiQuiz.length) {
+                                           toast.error("Please answer all questions before submitting.");
+                                           return;
+                                        }
+                                        setAiQuizSubmitted(true);
+                                        toast.success("Quiz Submitted!");
+                                     }}
+                                     className="w-full py-3 bg-[#EA580C] text-white text-xs font-black rounded-xl hover:bg-[#d94e07] shadow-md transition-all cursor-pointer"
+                                  >
+                                     Submit Answers
+                                  </button>
+                               ) : (
+                                  <button
+                                     onClick={handleGenerateQuiz}
+                                     className="w-full py-3 border border-[#EA580C]/30 text-[#EA580C] text-xs font-black rounded-xl hover:bg-[#EA580C]/10 transition-all cursor-pointer"
+                                  >
+                                     Retake New Quiz
+                                  </button>
+                                )}
+                            </div>
+                         )}
+                      </div>
+                    )}
+                 </div>
+           </div>
+        
+        {/* Drawer Footer - Chat input */}
+       <div className={`p-4 border-t ${isDarkMode ? 'border-white/10 bg-[#0B1120]' : 'border-slate-200 bg-white'}`}>
+          <form onSubmit={handleAskQuestion} className="flex gap-2">
+             <input
+                type="text"
+                value={aiQuestion}
+                onChange={(e) => setAiQuestion(e.target.value)}
+                placeholder="Ask Mentor AI a question..."
+                className={`flex-1 p-3 rounded-xl text-xs focus:outline-none transition-all ${
+                  isDarkMode 
+                     ? 'bg-slate-900 border border-white/10 text-white focus:border-[#EA580C]' 
+                     : 'bg-slate-50 border border-slate-200 text-slate-800 focus:border-[#EA580C]'
+                }`}
+             />
+             <button
+                type="submit"
+                disabled={!aiQuestion.trim() || loadingAi}
+                className="px-4 py-3 bg-gradient-to-tr from-[#EA580C] to-[#FDBA74] text-white rounded-xl font-bold hover:scale-105 active:scale-95 transition-all text-xs cursor-pointer"
+             >
+                Send
+             </button>
+          </form>
+       </div>
+     </motion.div>
+  )}
+</AnimatePresence>
 
     </div>
   );

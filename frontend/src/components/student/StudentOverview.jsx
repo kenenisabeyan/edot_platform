@@ -8,7 +8,7 @@ import {
 import { 
   Award, TrendingUp, CheckCircle2, 
   Flame, Target, ChevronRight, PlayCircle, BookOpen, Clock, BarChart2, Star, Zap,
-  CheckCircle, ArrowUpRight, GraduationCap, ShieldCheck, MoreHorizontal, Atom, Code, Calculator, MessageSquare, Users
+  CheckCircle, ArrowUpRight, GraduationCap, ShieldCheck, MoreHorizontal, Atom, Code, Calculator, MessageSquare, Users, Loader2
 } from 'lucide-react';
 import api from '../../utils/api';
 import PremiumModal from '../PremiumModal';
@@ -33,6 +33,28 @@ const StudentOverview = ({
   const [messagesModalOpen, setMessagesModalOpen] = useState(false);
   const [claimingCertificateId, setClaimingCertificateId] = useState(null);
   const dropdownRef = useRef(null);
+  const [twinProfile, setTwinProfile] = useState(null);
+  const [loadingTwin, setLoadingTwin] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTwin = async () => {
+      try {
+        setLoadingTwin(true);
+        const { data } = await api.get('/ai/twin');
+        if (data.success && isMounted) {
+          setTwinProfile(data.twinProfile);
+        }
+      } catch (err) {
+        console.error('Failed to fetch AI twin profile', err);
+      } finally {
+        if (isMounted) setLoadingTwin(false);
+      }
+    };
+    fetchTwin();
+    return () => { isMounted = false; };
+  }, []);
+
 
   const toggleCertificateDropdown = () => setCertificateDropdownOpen((prev) => !prev);
 
@@ -231,7 +253,65 @@ const StudentOverview = ({
             <div className="w-full h-2 bg-[#F5F7FF] dark:bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-[#00D4FF] rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, (daysStudied / 7) * 100)}%` }}></div>
             </div>
-          </motion.div>
+      </motion.div>
+    </div>
+  </motion.div>
+
+      {/* AI Learning Twin Widget */}
+      <motion.div 
+        variants={itemVariants} 
+        className={`p-6 md:p-8 rounded-[32px] border relative overflow-hidden transition-all duration-300 ${
+          isDarkMode ? 'bg-[#0B1D3A] border-[#1e293b]' : 'bg-gradient-to-tr from-white via-slate-50 to-amber-50/20 border-slate-200/80 shadow-md'
+        }`}
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+        <div className="relative z-10 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+          <div className="flex-1 space-y-3 w-full">
+            <h3 className={`text-base font-black flex items-center gap-2 tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              <span className="p-2 rounded-xl bg-amber-500/10 text-amber-500"><Atom className="w-5 h-5" /></span>
+              EDOT AI Learning Twin
+            </h3>
+            {loadingTwin ? (
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-500" /> Analysing cognitive performance indicators...
+              </div>
+            ) : twinProfile ? (
+              <div className="space-y-4 w-full">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-amber-400/20 text-amber-300' : 'bg-amber-100 text-amber-800'}`}>
+                    Twin Mode: {twinProfile.pace}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold w-full">
+                  <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-white/5' : 'bg-white border-slate-100'}`}>
+                    <span className="text-[10px] font-black uppercase text-emerald-400 block mb-1">Knowledge Strengths</span>
+                    <p className={isDarkMode ? 'text-slate-300 font-medium leading-relaxed' : 'text-slate-650 font-medium leading-relaxed'}>{twinProfile.strengths}</p>
+                  </div>
+                  <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-white/5' : 'bg-white border-slate-100'}`}>
+                    <span className="text-[10px] font-black uppercase text-amber-500 block mb-1">Focus & Growth Gaps</span>
+                    <p className={isDarkMode ? 'text-slate-300 font-medium leading-relaxed' : 'text-slate-650 font-medium leading-relaxed'}>{twinProfile.weaknesses}</p>
+                  </div>
+                </div>
+                <div className="pt-2 w-full">
+                  <span className="text-[10px] font-black uppercase text-slate-450 block mb-2">Personalised Revision Roadmap</span>
+                  <div className="flex flex-wrap gap-2">
+                    {twinProfile.recommendations.map((rec, rIdx) => (
+                      <span 
+                        key={rIdx} 
+                        className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+                          isDarkMode ? 'bg-slate-800/40 border-white/5 text-slate-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
+                        }`}
+                      >
+                        🎯 {rec}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Failed to render AI learning profile.</p>
+            )}
+          </div>
         </div>
       </motion.div>
 

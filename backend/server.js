@@ -37,6 +37,13 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import liveClassRoutes from './routes/liveClassRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import learningProfileRoutes from './routes/learningProfileRoutes.js';
+import mentorRoutes from './routes/mentorRoutes.js';
+import courseIntelligenceRoutes from './routes/courseIntelligenceRoutes.js';
+import recommendationRoutes from './routes/recommendationRoutes.js';
+
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +117,13 @@ app.use('/api/live-classes', liveClassRoutes);
 app.use('/api/dashboard', dashboardRoutes); // Consolidated dashboard routes (replaces oldDashboardRoutes & newDashboardRoutes)
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/learning-profile', learningProfileRoutes);
+app.use('/api/mentor', mentorRoutes);
+app.use('/api/course-intelligence', courseIntelligenceRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+
+
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
