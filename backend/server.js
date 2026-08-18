@@ -43,6 +43,7 @@ import mentorRoutes from './routes/mentorRoutes.js';
 import courseIntelligenceRoutes from './routes/courseIntelligenceRoutes.js';
 import recommendationRoutes from './routes/recommendationRoutes.js';
 import intelligenceRoutes from './routes/intelligenceRoutes.js';
+import initializeIntelligenceCore from './src/intelligence/index.js';
 
 
 
@@ -124,6 +125,9 @@ app.use('/api/mentor', mentorRoutes);
 app.use('/api/course-intelligence', courseIntelligenceRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
+
+// Mount EDOT Intelligence Core (Domain Architecture)
+initializeIntelligenceCore(app, '/api/v2/intelligence');
 
 
 

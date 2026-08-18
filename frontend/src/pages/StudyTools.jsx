@@ -8,7 +8,7 @@ import {
   Sparkles, Calendar, BookOpen, Brain, Clock,
   Plus, Check, Trash, ArrowRight, RotateCw, 
   HelpCircle, ChevronRight, CheckCircle2, AlertTriangle, 
-  Save, Download, Loader2, Sparkle
+  Save, Download, Loader2, Sparkle, Target, Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -320,6 +320,56 @@ export default function StudyTools() {
     toast.success('Summary exported as Markdown.');
   };
 
+  // ==================== 5. ADAPTIVE WEAKNESS COACH ====================
+  const [practiceTopic, setPracticeTopic] = useState('');
+  const [practiceQuestions, setPracticeQuestions] = useState([]);
+  const [selectedPracticeAnswers, setSelectedPracticeAnswers] = useState({});
+  const [practiceSubmitted, setPracticeSubmitted] = useState(false);
+  const [practiceScore, setPracticeScore] = useState(0);
+
+  const handleGenerateAdaptivePractice = async (topicToPractice) => {
+    const target = topicToPractice || practiceTopic || profileWeaknesses[0] || 'Core concepts';
+    setIsLoading(true);
+    setPracticeSubmitted(false);
+    setSelectedPracticeAnswers({});
+    setPracticeTopic(target);
+    try {
+      const { data } = await api.post('/v2/intelligence/mentor/practice', {
+        topic: target,
+        courseTitle: profileData?.currentFocus || 'General Learning'
+      });
+      if (data.success && data.data?.questions) {
+        setPracticeQuestions(data.data.questions);
+        toast.success(`Generated adaptive challenge on ${target}!`);
+      } else {
+        toast.error('Could not generate practice questions.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Adaptive practice coach error.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectPracticeAnswer = (qIndex, option) => {
+    if (practiceSubmitted) return;
+    setSelectedPracticeAnswers({ ...selectedPracticeAnswers, [qIndex]: option });
+  };
+
+  const handleSubmitPractice = () => {
+    let correctCount = 0;
+    practiceQuestions.forEach((q, idx) => {
+      if (selectedPracticeAnswers[idx] === q.answer) {
+        correctCount++;
+      }
+    });
+    const pct = practiceQuestions.length > 0 ? Math.round((correctCount / practiceQuestions.length) * 100) : 0;
+    setPracticeScore(pct);
+    setPracticeSubmitted(true);
+    toast.success(`Practice challenge completed: ${pct}%!`);
+  };
+
   return (
     <div className="space-y-8 max-w-none w-full pb-10">
       
@@ -365,7 +415,8 @@ export default function StudyTools() {
           { id: 'planner', label: 'Study Planner', icon: Calendar },
           { id: 'flashcards', label: 'Flashcard Gen', icon: Brain },
           { id: 'quiz', label: 'Quiz Builder', icon: HelpCircle },
-          { id: 'summary', label: 'Summarizer', icon: BookOpen }
+          { id: 'summary', label: 'Summarizer', icon: BookOpen },
+          { id: 'adaptive', label: 'Adaptive Coach', icon: Target }
         ].map(tab => (
           <button
             key={tab.id}
@@ -897,6 +948,150 @@ export default function StudyTools() {
               </motion.div>
             )}
 
+            {/* 5. ADAPTIVE WEAKNESS COACH */}
+            {activeTab === 'adaptive' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`rounded-[2.5rem] border p-6 md:p-8 ${baseCardStyle}`}
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <Target className={`w-5 h-5 ${goldText}`} /> AI Adaptive Weakness Coach
+                    </h3>
+                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Generate dynamic, high-yield practice challenges tailored directly to bridge your conceptual gaps.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Focus Topic Quick Selector */}
+                {profileWeaknesses.length > 0 && (
+                  <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400 block mb-2">
+                      Detected Focus Areas from Your Profile:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {profileWeaknesses.map((w, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleGenerateAdaptivePractice(w)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-white border border-amber-500/30 transition-all flex items-center gap-1.5"
+                        >
+                          <Zap className="w-3 h-3" /> Practice {w}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Topic Input */}
+                <div className="flex flex-col sm:flex-row gap-3 mb-8">
+                  <input
+                    type="text"
+                    placeholder="Or enter any concept (e.g. Asynchronous JavaScript, Bayes Theorem)..."
+                    value={practiceTopic}
+                    onChange={(e) => setPracticeTopic(e.target.value)}
+                    className={`flex-1 px-4 py-3 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 ${isDarkMode ? 'bg-[#121A2F] text-white border-white/10' : 'bg-slate-50 text-slate-800 border-slate-200'}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateAdaptivePractice()}
+                    disabled={isLoading}
+                    className={`px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${goldBtn} flex items-center justify-center gap-2 shrink-0`}
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Generate Challenge'}
+                  </button>
+                </div>
+
+                {/* Practice Questions Container */}
+                {practiceQuestions.length > 0 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                      <span className="text-sm font-bold text-cyan-400">
+                        Topic: {practiceTopic || 'Target Practice'} ({practiceQuestions.length} Questions)
+                      </span>
+                      {practiceSubmitted && (
+                        <span className={`text-sm font-black px-3 py-1 rounded-full border ${practiceScore >= 75 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+                          Score: {practiceScore}%
+                        </span>
+                      )}
+                    </div>
+
+                    {practiceQuestions.map((q, qIndex) => {
+                      const selected = selectedPracticeAnswers[qIndex];
+                      const isCorrect = selected === q.answer;
+
+                      return (
+                        <div key={qIndex} className={`p-5 rounded-2xl border transition-all ${isDarkMode ? 'bg-slate-900/60 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                          <p className="font-bold text-sm mb-4">
+                            <span className="text-amber-400 mr-2">Q{qIndex + 1}.</span> {q.question}
+                          </p>
+
+                          <div className="space-y-2">
+                            {(q.options || []).map((opt, optIndex) => {
+                              const isOptionSelected = selected === opt;
+                              let optStyle = isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-200 hover:bg-slate-100';
+
+                              if (practiceSubmitted) {
+                                if (opt === q.answer) {
+                                  optStyle = 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 font-bold';
+                                } else if (isOptionSelected && !isCorrect) {
+                                  optStyle = 'bg-rose-500/20 border-rose-500/50 text-rose-400 font-bold';
+                                }
+                              } else if (isOptionSelected) {
+                                optStyle = 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold';
+                              }
+
+                              return (
+                                <button
+                                  key={optIndex}
+                                  type="button"
+                                  disabled={practiceSubmitted}
+                                  onClick={() => handleSelectPracticeAnswer(qIndex, opt)}
+                                  className={`w-full p-3 rounded-xl border text-left text-xs transition-all flex items-center justify-between ${optStyle}`}
+                                >
+                                  <span>{opt}</span>
+                                  {practiceSubmitted && opt === q.answer && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {practiceSubmitted && q.explanation && (
+                            <div className="mt-4 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-300">
+                              <span className="font-bold">Explanation:</span> {q.explanation}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {!practiceSubmitted ? (
+                      <button
+                        type="button"
+                        onClick={handleSubmitPractice}
+                        className={`w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${goldBtn}`}
+                      >
+                        Submit Practice Challenge
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateAdaptivePractice()}
+                        className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all bg-cyan-500 hover:bg-cyan-600 text-white shadow-md shadow-cyan-500/20"
+                      >
+                        Try Another Challenge Set
+                      </button>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
           </AnimatePresence>
         </div>
 
@@ -978,6 +1173,31 @@ export default function StudyTools() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Adaptive Weakness Remediation Sidebar */}
+          {activeTab === 'adaptive' && (
+            <div className={`p-6 rounded-[2rem] border ${baseCardStyle}`}>
+              <h4 className="text-sm font-bold mb-4 flex items-center gap-1.5 text-amber-500">
+                <Target className="w-4 h-4" /> Focus Topologies
+              </h4>
+              <p className="text-xs text-slate-400 mb-4">
+                Click any topic below to dynamically trigger an AI practice challenge tailored to your skill gaps.
+              </p>
+              <div className="space-y-2">
+                {(profileWeaknesses.length > 0 ? profileWeaknesses : ['Algorithm Complexity', 'State Management', 'Database Indexing']).map((topic, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleGenerateAdaptivePractice(topic)}
+                    className="w-full text-left p-3 rounded-xl border text-xs font-bold transition-all bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20 text-amber-400 flex items-center justify-between"
+                  >
+                    <span>{topic}</span>
+                    <ArrowRight className="w-3 h-3 opacity-60" />
+                  </button>
+                ))}
               </div>
             </div>
           )}

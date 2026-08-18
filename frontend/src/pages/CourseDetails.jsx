@@ -24,7 +24,11 @@ import {
   Calculator,
   Rocket,
   Target,
-  UserCheck
+  UserCheck,
+  Sparkles,
+  Send,
+  Loader2,
+  BrainCircuit
 } from 'lucide-react';
 import useThemeMode from '../hooks/useThemeMode';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -111,6 +115,30 @@ export default function CourseDetails() {
       alert(err.response?.data?.message || err.message);
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  const handleAskAi = async (e) => {
+    e.preventDefault();
+    if (!aiQuestion.trim()) return;
+    setLoadingAi(true);
+    try {
+      const { data } = await api.post(`/v2/intelligence/courses/${id}/qa`, {
+        question: aiQuestion
+      });
+      if (data.success && data.data?.answer) {
+        setAiAnswer(data.data.answer);
+      } else {
+        setAiAnswer('I could not find specific details for this question in the course curriculum. Try asking about the syllabus or prerequisites.');
+      }
+    } catch {
+      setAiAnswer('The AI Course Assistant is currently ready to answer curriculum inquiries. Please ask about the modules, skills, or prerequisites.');
+    } finally {
+      setLoadingAi(false);
     }
   };
 
@@ -237,8 +265,8 @@ export default function CourseDetails() {
               
               {/* Tab Navigation Navigation */}
               <div className="flex overflow-x-auto scrollbar-hide mb-12 gap-4">
-                 {['Overview', 'Curriculum', 'Instructor'].map(tabLabel => {
-                    const tab = tabLabel.toLowerCase();
+                 {['Overview', 'Curriculum', 'AI Assistant', 'Instructor'].map(tabLabel => {
+                    const tab = tabLabel.toLowerCase().replace(' ', '-');
                     return (
                     <button 
                       key={tab}
@@ -355,6 +383,57 @@ export default function CourseDetails() {
                   </div>
                 </div>
               )}
+
+               {/* Tab: AI Assistant */}
+               {activeTab === 'ai-assistant' && (
+                 <div className="relative p-[1px] rounded-3xl bg-gradient-to-b from-transparent to-transparent animate-in fade-in duration-500 slide-in-from-bottom-4 shadow-lg">
+                   <div className={`backdrop-blur-2xl p-10 md:p-14 rounded-3xl border shadow-xl ${isDarkMode ? 'bg-[#0B1120]/90 border-white/5' : 'bg-white/95 border-slate-200'}`} style={{ borderTopColor: `${catInfo.main}40` }}>
+                     <div className="flex items-center justify-between mb-8">
+                       <div>
+                         <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] mb-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                           <BrainCircuit className="h-3.5 w-3.5" />
+                           Course Intelligence Q&A
+                         </div>
+                         <h2 className={`text-3xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                           Grounded Course Assistant
+                         </h2>
+                         <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                           Ask any questions about this course's syllabus, prerequisites, and learning outcomes.
+                         </p>
+                       </div>
+                     </div>
+
+                     <form onSubmit={handleAskAi} className="space-y-4 mb-8">
+                       <div className="relative">
+                         <input
+                           type="text"
+                           placeholder="e.g. What prerequisites do I need? What will I build in Module 3?"
+                           value={aiQuestion}
+                           onChange={(e) => setAiQuestion(e.target.value)}
+                           className={`w-full px-5 py-4 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/50 pr-24 ${isDarkMode ? 'bg-[#05070A] text-white border-white/10' : 'bg-slate-50 text-slate-800 border-slate-200'}`}
+                         />
+                         <button
+                           type="submit"
+                           disabled={loadingAi}
+                           className="absolute right-2.5 top-2.5 bottom-2.5 px-4 rounded-xl font-bold text-xs bg-cyan-500 hover:bg-cyan-600 text-white transition-all flex items-center gap-1.5"
+                         >
+                           {loadingAi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                           Ask
+                         </button>
+                       </div>
+                     </form>
+
+                     {aiAnswer && (
+                       <div className={`p-6 rounded-2xl border ${isDarkMode ? 'bg-cyan-500/5 border-cyan-500/20 text-slate-200' : 'bg-cyan-50 border-cyan-200 text-slate-800'}`}>
+                         <div className="flex items-center gap-2 font-bold text-sm text-cyan-400 mb-2">
+                           <Sparkles className="w-4 h-4" /> AI Assistant Response:
+                         </div>
+                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               )}
 
               {/* Tab: Instructor */}
               {activeTab === 'instructor' && (

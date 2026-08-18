@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, ArrowLeft, ArrowRight, Award, RefreshCcw } from 'lucide-react';
 import ThemeDropdown from '../components/ThemeDropdown';
 import api from '../utils/api';
+import { recordQuizAttempt } from '../services/intelligenceApi.js';
 
 export default function QuizViewer() {
   const isDarkMode = useThemeMode();
@@ -67,6 +68,27 @@ export default function QuizViewer() {
     setSubmitting(true);
     const scoreVal = calculateScorePercentage();
     setFinalScore(scoreVal);
+    
+    // Log each question attempt to the Intelligence Core asynchronously
+    const questions = course?.finalExam || [];
+    questions.forEach((q, index) => {
+      const correct = q.correctAnswer !== undefined ? q.correctAnswer : q.correctOption;
+      const isCorrect = selectedAnswers[index] === correct;
+      const selected = selectedAnswers[index] !== undefined ? String(selectedAnswers[index]) : '';
+      const correctVal = correct !== undefined ? String(correct) : '';
+      
+      recordQuizAttempt({
+        courseId: id,
+        questionIndex: index,
+        question: q.question || `Question ${index + 1}`,
+        selectedAnswer: selected,
+        correctAnswer: correctVal,
+        isCorrect,
+        topic: q.topic || course?.mainCategory || 'General',
+        timeSpentSeconds: 0
+      }).catch(() => {});
+    });
+
     try {
       await api.post(`/student/courses/${id}/exam/complete`, { score: scoreVal });
       setPassedScore(true); // Since it didn't throw an error, it passed >= 75%

@@ -5,6 +5,7 @@ import { User, Mail, Phone, MapPin, Save, AlertCircle, CircleCheck, Camera, Load
 import { QRCodeSVG } from 'qrcode.react';
 import CustomDropdown from '../components/CustomDropdown';
 import useThemeMode from '../hooks/useThemeMode';
+import SkillGraph from '../components/SkillGraph';
 
 export default function ProfileView() {
   const { user, updateUser } = useAuth();
@@ -512,6 +513,11 @@ export default function ProfileView() {
                  </div>
                </div>
              )}
+
+             {/* AI Intelligence Skill Graph */}
+             <div className="mt-8">
+               <SkillGraph isDarkMode={isDarkMode} />
+             </div>
            </div>
         </div>
       </div>

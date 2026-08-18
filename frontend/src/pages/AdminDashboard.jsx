@@ -17,9 +17,9 @@ import FinanceExpenses from './FinanceExpenses';
 import { CircleDollarSign, ArrowDownRight } from 'lucide-react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useDashboardStats } from '../hooks/useDashboardStats';
 import PremiumModal from '../components/PremiumModal';
 import CourseFallbackThumbnail from '../components/CourseFallbackThumbnail';
+import AtRiskPanel from '../components/AtRiskPanel';
 
 const CAT_COLORS = {
   "Social Science": { main: "#F97316", dark: "#C2410C" }, 
@@ -606,11 +606,15 @@ export default function AdminDashboard() {
                      <CheckCircle2 className="w-6 h-6"/>
                    </div>
                    <div>
-                     <p className="text-[13px] text-emerald-600 font-bold   mb-1">Resolved Cases</p>
+                     <p className="text-[13px] text-emerald-600 font-bold mb-1">Resolved Cases</p>
                      <h4 className="text-3xl font-black text-emerald-900">45</h4>
                    </div>
                  </div>
                </div>
+            </div>
+
+            <div className="mt-8">
+              <AtRiskPanel isDarkMode={isDarkMode} />
             </div>
 
             <div className="mt-8">

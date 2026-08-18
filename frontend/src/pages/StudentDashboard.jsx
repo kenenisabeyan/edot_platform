@@ -32,6 +32,7 @@ import CertificatesView from './CertificatesView';
 import LearningProfileCard from '../components/LearningProfileCard';
 import IntelligentLearningAnalytics from '../components/IntelligentLearningAnalytics';
 import RecommendationEnginePanel from '../components/RecommendationEnginePanel';
+import IntelligencePanel from '../components/IntelligencePanel';
 
 const DB_CATEGORY_MAP = {
   "Social Sciences": "Social Science",
@@ -707,6 +708,7 @@ export default function StudentDashboard() {
               }}
             />
             <div className="space-y-6">
+              <IntelligencePanel isDarkMode={isDarkMode} />
               <IntelligentLearningAnalytics enrolledCourses={enrolledCourses} dashboardStats={dashboardStats} isDarkMode={isDarkMode} />
               <RecommendationEnginePanel isDarkMode={isDarkMode} />
               <LearningProfileCard />
