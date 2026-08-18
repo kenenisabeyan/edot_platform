@@ -105,6 +105,7 @@ model User {
   quizAttempts         QuizAttempt[]
   learningSessions     LearningSession[]
   analyticsReport      LearnerAnalyticsReport?
+  learningEvents       LearningEvent[]       @relation("UserLearningEvents")
 }
 
 model LearnerProfile {
@@ -1128,4 +1129,40 @@ model LearnerAnalyticsReport {
 
   @@index([riskLevel])
   @@index([generatedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unified Learning Event Pipeline
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LearningEvent {
+  id              String   @id @default(uuid())
+  idempotencyKey  String?  @unique
+  userId          String
+  user            User     @relation("UserLearningEvents", fields: [userId], references: [id], onDelete: Cascade)
+  eventType       String   // e.g. LESSON_STARTED, VIDEO_PROGRESS, QUIZ_COMPLETED, etc.
+  courseId        String?
+  sectionId       String?
+  lessonId        String?
+  quizId          String?
+  assignmentId    String?
+  timestamp       DateTime @default(now())
+  duration        Float?   // duration in seconds
+  score           Float?   // assessment score
+  progress        Float?   // percentage (0 - 100)
+  metadata        Json?    // custom attributes (sanitized, non-sensitive)
+  context         Json?    // device, IP, user-agent, session details
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([quizId])
+  @@index([assignmentId])
+  @@index([timestamp])
+  @@index([userId, timestamp])
+  @@index([eventType, timestamp])
+  @@index([courseId, timestamp])
+  @@index([userId, eventType, timestamp])
 }

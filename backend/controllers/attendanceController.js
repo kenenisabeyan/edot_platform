@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
-import { normalizeAttendanceDate } from '../lib/modelHelpers.js'; // If using the helper I made
+import { normalizeAttendanceDate } from '../lib/modelHelpers.js';
+import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
 
 export const getCourseAttendance = async (req, res) => {
   try {
@@ -262,6 +263,14 @@ export const submitSelfAttendance = async (req, res) => {
           records: records
       }
     });
+
+    // Fire-and-forget: emit ATTENDANCE_MARKED to learning event pipeline
+    publishLearningEvent({
+      userId,
+      eventType: 'ATTENDANCE_MARKED',
+      courseId,
+      metadata: { section, status: 'present' }
+    }).catch(() => {});
 
     res.status(200).json({ success: true, message: 'Attendance marked successfully', data: attendance });
   } catch (error) {

@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from '../lib/modelHelpers.js';
 import generateToken from '../utils/generateToken.js';
 import { logActivity } from '../controllers/activityController.js';
 import { protect } from '../middleware/auth.js';
+import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
 
 const router = express.Router();
 
@@ -149,6 +150,13 @@ router.post('/login', [
       null, 
       { ip: req.ip, userAgent: req.headers['user-agent'] }
     );
+
+    // Fire-and-forget: emit LOGIN event to learning event pipeline
+    publishLearningEvent({
+      userId: user.id,
+      eventType: 'LOGIN',
+      context: { ip: req.ip, userAgent: req.headers['user-agent'] }
+    }).catch(() => {});
 
     res.cookie('token', token, {
         httpOnly: true,  

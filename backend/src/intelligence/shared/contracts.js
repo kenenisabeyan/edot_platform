@@ -1,36 +1,54 @@
 /**
- * EDOT Intelligence Domain - Shared Contracts & Types
- * Defines the foundational event types, schemas, and error definitions
- * for the Intelligence Core without coupling to business modules.
+ * EDOT Intelligence Domain - Shared Contracts & Event Definitions
+ * Defines all standard learning event types, proficiency levels, and risk constants.
  */
 
 export const EventTypes = {
-  // Lesson & Progress Events
+  // Lesson Events
   LESSON_STARTED: 'LESSON_STARTED',
-  LESSON_HEARTBEAT: 'LESSON_HEARTBEAT',
+  LESSON_VIEWED: 'LESSON_VIEWED',
   LESSON_COMPLETED: 'LESSON_COMPLETED',
+
+  // Video Learning Events
+  VIDEO_STARTED: 'VIDEO_STARTED',
   VIDEO_PROGRESS: 'VIDEO_PROGRESS',
+  VIDEO_PAUSED: 'VIDEO_PAUSED',
+  VIDEO_COMPLETED: 'VIDEO_COMPLETED',
 
-  // Assessment & Challenge Events
-  QUIZ_ATTEMPTED: 'QUIZ_ATTEMPTED',
+  // Assessment & Quiz Events
+  QUIZ_STARTED: 'QUIZ_STARTED',
+  QUIZ_ANSWERED: 'QUIZ_ANSWERED',
   QUIZ_COMPLETED: 'QUIZ_COMPLETED',
-  EXAM_SUBMITTED: 'EXAM_SUBMITTED',
+  QUIZ_FAILED: 'QUIZ_FAILED',
 
-  // Session & Engagement Events
+  // Assignment Events
+  ASSIGNMENT_STARTED: 'ASSIGNMENT_STARTED',
+  ASSIGNMENT_SUBMITTED: 'ASSIGNMENT_SUBMITTED',
+  ASSIGNMENT_GRADED: 'ASSIGNMENT_GRADED',
+
+  // Course Lifecycle Events
+  COURSE_ENROLLED: 'COURSE_ENROLLED',
+  COURSE_STARTED: 'COURSE_STARTED',
+  COURSE_COMPLETED: 'COURSE_COMPLETED',
+
+  // Attendance Events
+  ATTENDANCE_MARKED: 'ATTENDANCE_MARKED',
+
+  // Authentication & Session Events
+  LOGIN: 'LOGIN',
   SESSION_STARTED: 'SESSION_STARTED',
   SESSION_ENDED: 'SESSION_ENDED',
-  RESOURCE_ACCESSED: 'RESOURCE_ACCESSED',
 
-  // Growth & Milestone Events
+  // Growth & Guidance Events
   SKILL_EVALUATED: 'SKILL_EVALUATED',
   WEAKNESS_FLAGGED: 'WEAKNESS_FLAGGED',
   MILESTONE_REACHED: 'MILESTONE_REACHED',
   CERTIFICATE_ISSUED: 'CERTIFICATE_ISSUED',
-
-  // Mentorship & Guidance Events
   MENTOR_QUERY: 'MENTOR_QUERY',
   RECOMMENDATION_ACTED: 'RECOMMENDATION_ACTED'
 };
+
+export const StandardEventTypeList = Object.values(EventTypes);
 
 export const RiskLevels = {
   LOW: 'low',

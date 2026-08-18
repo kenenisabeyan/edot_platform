@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, authorize, checkNotBlocked } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { logActivity } from '../controllers/activityController.js';
+import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
 
 const router = express.Router();
 
@@ -135,6 +136,14 @@ router.post('/courses/:courseId/enroll', async (req, res) => {
 
         await logActivity(studentId, `Enrolled in ${course.title}`, 'learning', course.title, courseId);
 
+        // Fire-and-forget: publish COURSE_ENROLLED event
+        publishLearningEvent({
+            userId: studentId,
+            eventType: 'COURSE_ENROLLED',
+            courseId,
+            metadata: { courseTitle: course.title, category: course.mainCategory }
+        }).catch(() => {});
+
         res.status(201).json({
             success: true,
             message: 'Enrollment requested successfully. Awaiting administrator approval.',
@@ -188,6 +197,16 @@ router.post('/courses/:courseId/lessons/:lessonId/complete', async (req, res) =>
             });
 
             await logActivity(userId, `Completed a lesson in ${course.title}`, 'learning', course.title, course.id);
+
+            // Fire-and-forget: publish LESSON_COMPLETED event
+            publishLearningEvent({
+                userId,
+                eventType: 'LESSON_COMPLETED',
+                courseId,
+                lessonId,
+                progress,
+                metadata: { courseTitle: course.title, totalCompleted: completedLessons.length }
+            }).catch(() => {});
         }
 
         res.status(200).json({

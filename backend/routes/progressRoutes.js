@@ -2,6 +2,7 @@ import express from 'express';
 import { protect, guardActiveEnrollment, checkNotBlocked } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { syncLearnerProfile } from '../services/profileSyncService.js';
+import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
 
 const router = express.Router();
 
@@ -82,6 +83,17 @@ router.post('/ping', protect, checkNotBlocked, guardActiveEnrollment, async (req
                 requiredSeconds: requiredDurationSeconds
             }
         });
+
+        // Fire-and-forget: publish learning event to unified pipeline
+        publishLearningEvent({
+            userId,
+            eventType: is_video_complete ? 'VIDEO_COMPLETED' : 'VIDEO_PROGRESS',
+            courseId,
+            lessonId,
+            duration: totalSecondsWatched,
+            progress: Math.min(100, Math.round((totalSecondsWatched / requiredDurationSeconds) * 100)),
+            metadata: { currentSecond, totalSecondsWatched, isVideoComplete: is_video_complete }
+        }).catch(() => {});
 
         // Fire-and-forget: update LearnerProfile asynchronously — never blocks ping
         syncLearnerProfile(userId).catch(() => {});
