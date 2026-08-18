@@ -111,6 +111,8 @@ model User {
   adaptivePlans        AdaptiveLearningPlan[]  @relation("UserAdaptivePlans")
   adaptiveRecommendations AdaptiveRecommendation[] @relation("UserAdaptiveRecommendations")
   milestones           MilestoneProgress[]     @relation("UserMilestones")
+  opportunityMatches   LearnerOpportunityMatch[] @relation("UserOpportunityMatches")
+  opportunityRecommendations OpportunityRecommendation[] @relation("UserOpportunityRecommendations")
 }
 
 model LearnerProfile {
@@ -1384,4 +1386,76 @@ model CourseIntelligenceSnapshot {
 
   @@index([courseId])
   @@index([generatedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Opportunity & Growth Intelligence Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Opportunity {
+  id                    String                   @id @default(uuid())
+  title                 String
+  type                  String
+  organization          String
+  location              String?
+  description           String
+  applyUrl              String?
+  deadline              DateTime?
+  isVerified            Boolean                  @default(true)
+  status                String                   @default("active")
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  requirements          OpportunityRequirement[]
+  learnerMatches        LearnerOpportunityMatch[]
+  recommendations       OpportunityRecommendation[]
+
+  @@index([type])
+  @@index([status])
+}
+
+model OpportunityRequirement {
+  id                    String       @id @default(uuid())
+  opportunityId         String
+  opportunity           Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  requirementType       String
+  name                  String
+  isMandatory           Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+
+  @@index([opportunityId])
+}
+
+model LearnerOpportunityMatch {
+  id                    String      @id @default(uuid())
+  userId                String
+  user                  User        @relation("UserOpportunityMatches", fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId         String
+  opportunity           Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  matchScore            Float
+  matchingReasons       Json
+  missingRequirements   Json
+  recommendedPreparation String
+  calculatedAt          DateTime    @default(now())
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@unique([userId, opportunityId])
+  @@index([userId])
+  @@index([opportunityId])
+}
+
+model OpportunityRecommendation {
+  id                    String      @id @default(uuid())
+  userId                String
+  user                  User        @relation("UserOpportunityRecommendations", fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId         String
+  opportunity           Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  priority              String      @default("MEDIUM")
+  status                String      @default("RECOMMENDED")
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([opportunityId])
 }
