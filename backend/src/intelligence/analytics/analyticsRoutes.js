@@ -1,47 +1,67 @@
 /**
- * EDOT Intelligence Domain - Analytics Router
+ * EDOT Intelligence Domain - Analytics Engine Router
+ * Serves Learner, Instructor, and Admin Platform Analytics.
  */
 
 import express from 'express';
 import { protect, authorize, checkNotBlocked } from '../../../middleware/auth.js';
-import { getLearnerAnalytics, recalculateLearnerAnalytics, getAtRiskLearners } from './analyticsService.js';
+import {
+  getLearnerAnalytics,
+  getInstructorAnalytics,
+  getAdminAnalyticsOverview,
+  getAtRiskLearnersDTO
+} from './analyticsService.js';
 
 const router = express.Router();
 
-// GET /api/v2/intelligence/analytics/me - Student's learning analytics & risk overview
+// GET /intelligence/analytics/me or /api/v2/intelligence/analytics/me
 router.get('/me', protect, checkNotBlocked, async (req, res, next) => {
   try {
-    const report = await getLearnerAnalytics(req.user.id);
+    const analyticsData = await getLearnerAnalytics(req.user.id);
     res.json({
       success: true,
-      data: report
+      data: analyticsData
     });
   } catch (error) {
     next(error);
   }
 });
 
-// POST /api/v2/intelligence/analytics/recalculate - Force refresh analytics
-router.post('/recalculate', protect, checkNotBlocked, async (req, res, next) => {
+// GET /instructor/analytics or /api/v2/intelligence/instructor/analytics
+router.get('/instructor', protect, checkNotBlocked, authorize('instructor', 'admin'), async (req, res, next) => {
   try {
-    const report = await recalculateLearnerAnalytics(req.user.id);
+    const analyticsData = await getInstructorAnalytics(req.user.id);
     res.json({
       success: true,
-      data: report
+      data: analyticsData
     });
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/v2/intelligence/analytics/at-risk - Admin view of at-risk students
-router.get('/at-risk', protect, authorize('admin'), async (req, res, next) => {
+// GET /admin/analytics/overview or /api/v2/intelligence/admin/analytics/overview
+router.get('/admin/overview', protect, checkNotBlocked, authorize('admin'), async (req, res, next) => {
+  try {
+    const overview = await getAdminAnalyticsOverview();
+    res.json({
+      success: true,
+      data: overview
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /admin/learners/at-risk or /api/v2/intelligence/analytics/at-risk
+router.get('/at-risk', protect, checkNotBlocked, authorize('admin', 'instructor'), async (req, res, next) => {
   try {
     const { limit } = req.query;
-    const learners = await getAtRiskLearners(limit);
+    const atRiskList = await getAtRiskLearnersDTO(limit);
     res.json({
       success: true,
-      data: learners
+      count: atRiskList.length,
+      data: atRiskList
     });
   } catch (error) {
     next(error);
