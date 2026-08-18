@@ -52,6 +52,7 @@ import recommendationDomainRoutes from './src/intelligence/recommendations/recom
 import adaptiveDomainRoutes from './src/intelligence/adaptive/adaptiveRoutes.js';
 import courseIntelligenceDomainRoutes from './src/intelligence/course/courseIntelligenceRoutes.js';
 import opportunityDomainRoutes from './src/intelligence/opportunity/opportunityRoutes.js';
+import healthDomainRoutes from './src/intelligence/monitoring/healthRoutes.js';
 
 
 
@@ -155,6 +156,8 @@ app.use('/intelligence/adaptive-plan', adaptiveDomainRoutes);
 app.use('/api/intelligence/adaptive-plan', adaptiveDomainRoutes);
 app.use('/intelligence/opportunities', opportunityDomainRoutes);
 app.use('/api/intelligence/opportunities', opportunityDomainRoutes);
+app.use('/intelligence', healthDomainRoutes);
+app.use('/api/intelligence', healthDomainRoutes);
 app.use('/', courseIntelligenceDomainRoutes);
 
 // Mount EDOT Intelligence Core (Domain Architecture)
