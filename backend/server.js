@@ -45,6 +45,7 @@ import recommendationRoutes from './routes/recommendationRoutes.js';
 import intelligenceRoutes from './routes/intelligenceRoutes.js';
 import initializeIntelligenceCore from './src/intelligence/index.js';
 import learningEventRoutes from './src/intelligence/events/eventRoutes.js';
+import profileRoutes from './src/intelligence/profile/profileRoutes.js';
 
 
 
@@ -128,6 +129,8 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/intelligence', intelligenceRoutes);
 app.use('/api/learning/events', learningEventRoutes);
 app.use('/learning/events', learningEventRoutes);
+app.use('/intelligence/profile', profileRoutes);
+app.use('/api/intelligence/profile', profileRoutes);
 
 // Mount EDOT Intelligence Core (Domain Architecture)
 initializeIntelligenceCore(app, '/api/v2/intelligence');

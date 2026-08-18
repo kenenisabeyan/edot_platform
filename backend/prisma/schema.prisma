@@ -113,30 +113,46 @@ model LearnerProfile {
   userId                String   @unique
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  academicLevel        String   @default("Intermediate")
-  interests            Json?
-  learningGoals        Json?
-  strengths            Json?
-  weaknesses           Json?
-  studyHabits          Json?
-  learningBehavior     Json?
-  completedCourses     Int      @default(0)
-  completedLessons     Int      @default(0)
-  totalSkills          Int      @default(0)
-  quizAverage          Float    @default(0)
-  studyConsistencyScore Float   @default(0)
-  weeklyStudyHours     Float    @default(0)
-  currentFocus         String?
-  confidenceScore      Float    @default(0)
-  aiReadinessScore     Float    @default(0)
-  summary              String?
-  lastUpdatedAt        DateTime @updatedAt
-  createdAt            DateTime @default(now())
+  academicLevel         String   @default("Intermediate")
+  interests             Json?
+  learningGoals         Json?
+  strengths             Json?
+  weaknesses            Json?
+  studyHabits           Json?
+  learningBehavior      Json?
+  completedCourses      Int      @default(0)
+  completedLessons      Int      @default(0)
+  totalSkills           Int      @default(0)
+  quizAverage           Float    @default(0)
+  studyConsistencyScore Float    @default(0)
+  weeklyStudyHours      Float    @default(0)
+  currentFocus          String?
+  confidenceScore       Float    @default(0)
+  aiReadinessScore      Float    @default(0)
 
-  skills               LearnerSkill[]
-  weaknessEntries      LearnerWeakness[]
-  historyEvents        LearningHistoryEvent[]
-  progressSnapshots    LearningProgressSnapshot[]
+  // Explicit Intelligence Engine Metrics & Explainability
+  engagementScore        Float    @default(0)
+  consistencyScore       Float    @default(0)
+  learningMomentum       Float    @default(0)
+  riskLevel              String   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  riskReasons            Json?    // Array of explainable risk indicators
+  momentumReasons        Json?    // Array of explainable momentum factors
+  recommendedNextAction  String?  
+  recommendationRationale Json?   // Structured justification for action
+
+  summary               String?
+  lastUpdatedAt         DateTime @updatedAt
+  createdAt             DateTime @default(now())
+
+  skills                LearnerSkill[]
+  weaknessEntries       LearnerWeakness[]
+  historyEvents         LearningHistoryEvent[]
+  progressSnapshots     LearningProgressSnapshot[]
+
+  // Relational Intelligence Arrays
+  goals                 LearnerGoal[]
+  learnerInterests      LearnerInterest[]
+  insights              LearningInsight[]
 
   @@index([userId])
 }
@@ -149,16 +165,67 @@ model LearnerSkill {
   profile             LearnerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   name                String
   category            String?
-  proficiencyLevel    String   @default("beginner")
+  proficiencyLevel    String   @default("beginner") // beginner, intermediate, advanced, master
   masteryScore        Float    @default(0)
   confidenceScore     Float    @default(0)
   evidenceCount       Int      @default(0)
+  masteryState        String   @default("learning") // learning, practicing, mastered
   lastPracticedAt     DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   @@unique([profileId, name])
   @@index([profileId])
+}
+
+model LearnerGoal {
+  id           String         @id @default(uuid())
+  profileId    String
+  profile      LearnerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  goalText     String
+  category     String?        // career, academic, personal, skill
+  targetDate   DateTime?
+  status       String         @default("active") // active, achieved, archived
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([profileId])
+}
+
+model LearnerInterest {
+  id           String         @id @default(uuid())
+  profileId    String
+  profile      LearnerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  topic        String
+  category     String?
+  source       String         @default("inferred") // explicit, inferred
+  weight       Float          @default(1.0)
+  createdAt    DateTime       @default(now())
+
+  @@index([profileId])
+}
+
+model SkillCatalog {
+  id           String         @id @default(uuid())
+  name         String         @unique
+  category     String?
+  description  String?
+  createdAt    DateTime       @default(now())
+}
+
+model LearningInsight {
+  id           String         @id @default(uuid())
+  profileId    String
+  profile      LearnerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  type         String         // strength, weakness, risk, trend, recommendation
+  title        String
+  description  String
+  evidenceData Json?
+  impact       String         @default("medium") // low, medium, high
+  createdAt    DateTime       @default(now())
+
+  @@index([profileId])
+  @@index([type])
 }
 
 model LearnerWeakness {

@@ -1,19 +1,28 @@
 /**
  * EDOT Intelligence Domain - Learner Profile Service
- * Synthesizes multidimensional student data into dynamic profiles & skill graphs.
+ * Synthesizes multidimensional student data into dynamic profiles, skill graphs, and relational goals/insights.
  */
 
 import { prisma } from '../../../lib/prisma.js';
+import { calculateLearnerMetrics } from './profileCalculator.js';
 import { NotFoundError } from '../shared/errors.js';
 
 /**
- * Derives and upserts the comprehensive LearnerProfile from raw data.
- * Safe to run asynchronously or on-demand.
+ * Derives and upserts the comprehensive LearnerProfile from raw telemetry and relational models.
+ * Safe to run asynchronously after events or on-demand.
  * 
  * @param {string} userId 
  */
 export async function syncLearnerProfile(userId) {
-  const [progressRecords, progressLogs, enrollments, quizAttempts] = await Promise.all([
+  const [
+    progressRecords,
+    progressLogs,
+    enrollments,
+    quizAttempts,
+    learningEvents,
+    existingSkills,
+    existingWeaknesses
+  ] = await Promise.all([
     prisma.userCourseProgress.findMany({
       where: { userId },
       include: {
@@ -22,7 +31,10 @@ export async function syncLearnerProfile(userId) {
     }),
     prisma.progressLog.findMany({ where: { userId } }),
     prisma.enrollment.findMany({ where: { studentId: userId } }),
-    prisma.quizAttempt.findMany({ where: { userId } })
+    prisma.quizAttempt.findMany({ where: { userId } }),
+    prisma.learningEvent.findMany({ where: { userId }, orderBy: { timestamp: 'desc' } }),
+    prisma.learnerSkill.findMany({ where: { userId } }),
+    prisma.learnerWeakness.findMany({ where: { userId } })
   ]);
 
   const completedCourses = progressRecords.filter((e) => e.completed || e.passedFinalExam).length;
@@ -39,9 +51,17 @@ export async function syncLearnerProfile(userId) {
     ? validScores.reduce((s, v) => s + v, 0) / validScores.length
     : (quizAttempts.length > 0
       ? Math.round((quizAttempts.filter(q => q.isCorrect).length / quizAttempts.length) * 100)
-      : 0);
+      : 75);
 
-  // Category-based performance derivation
+  // Run deterministic metrics calculation with explainable reasons
+  const calculatedMetrics = calculateLearnerMetrics({
+    events: learningEvents,
+    quizAttempts,
+    progressLogs,
+    skills: existingSkills,
+    weaknesses: existingWeaknesses
+  });
+
   const categoryMap = progressRecords.reduce((acc, e) => {
     const cat = e.course?.mainCategory || 'General';
     if (!acc[cat]) acc[cat] = { total: 0, count: 0 };
@@ -50,34 +70,13 @@ export async function syncLearnerProfile(userId) {
     return acc;
   }, {});
 
-  const sortedCategories = Object.entries(categoryMap).sort(
-    (a, b) => b[1].total - a[1].total
-  );
-
+  const sortedCategories = Object.entries(categoryMap).sort((a, b) => b[1].total - a[1].total);
   const strengths = sortedCategories.slice(0, 4).map(([cat]) => cat);
   const weaknesses = sortedCategories.slice(-3).map(([cat]) => cat);
+  const interests = [...new Set(progressRecords.flatMap((e) => e.course?.tags || []).filter(Boolean))].slice(0, 10);
 
-  const interests = [
-    ...new Set(progressRecords.flatMap((e) => e.course?.tags || []).filter(Boolean))
-  ].slice(0, 10);
-
-  const studyConsistencyScore = Math.min(
-    100,
-    Math.round(progressLogs.length * 4 + completedCourses * 5)
-  );
-
-  const weeklyStudyHours = Math.max(
-    1,
-    Math.round((progressLogs.length + completedLessons) / 6)
-  );
-
-  const confidenceScore = Math.min(100, Math.round(quizAverage + completedCourses * 4));
-  const aiReadinessScore = Math.min(
-    100,
-    Math.round(studyConsistencyScore * 0.6 + confidenceScore * 0.4)
-  );
   const academicLevel = enrollments.length > 3 ? 'Advanced' : 'Intermediate';
-  const currentFocus = progressRecords[0]?.course?.title || 'Foundational Growth';
+  const currentFocus = progressRecords[0]?.course?.title || 'Foundational Skills';
 
   const profileData = {
     academicLevel,
@@ -85,8 +84,8 @@ export async function syncLearnerProfile(userId) {
     strengths,
     weaknesses,
     studyHabits: {
-      consistencyScore: studyConsistencyScore,
-      weeklyStudyHours,
+      consistencyScore: calculatedMetrics.consistencyScore,
+      weeklyStudyHours: Math.max(1, Math.round(learningEvents.length / 5)),
       preferredTime: 'Flexible study blocks'
     },
     learningBehavior: {
@@ -97,12 +96,23 @@ export async function syncLearnerProfile(userId) {
     completedCourses,
     completedLessons,
     quizAverage,
-    studyConsistencyScore,
-    weeklyStudyHours,
+    studyConsistencyScore: calculatedMetrics.consistencyScore,
+    weeklyStudyHours: Math.max(1, Math.round(learningEvents.length / 5)),
     currentFocus,
-    confidenceScore,
-    aiReadinessScore,
-    summary: `Dynamic profile: ${completedCourses} courses finished, ${Math.round(quizAverage)}% quiz average.`
+
+    // Deterministic intelligence & explainable outputs
+    engagementScore: calculatedMetrics.engagementScore,
+    consistencyScore: calculatedMetrics.consistencyScore,
+    learningMomentum: calculatedMetrics.learningMomentum,
+    riskLevel: calculatedMetrics.riskLevel,
+    riskReasons: calculatedMetrics.riskReasons,
+    momentumReasons: calculatedMetrics.momentumReasons,
+    recommendedNextAction: calculatedMetrics.recommendedNextAction,
+    recommendationRationale: calculatedMetrics.recommendationRationale,
+
+    confidenceScore: calculatedMetrics.confidenceScore,
+    aiReadinessScore: Math.min(100, Math.round(calculatedMetrics.consistencyScore * 0.5 + calculatedMetrics.confidenceScore * 0.5)),
+    summary: `Learner Profile: Risk [${calculatedMetrics.riskLevel}], Momentum [${calculatedMetrics.learningMomentum}%], Engagement [${calculatedMetrics.engagementScore}%].`
   };
 
   const profile = await prisma.learnerProfile.upsert({
@@ -115,7 +125,7 @@ export async function syncLearnerProfile(userId) {
 }
 
 /**
- * Retrieves full learner profile with related skills and weakness items.
+ * Retrieves full learner profile with all relational arrays (skills, goals, interests, insights, weaknesses).
  * 
  * @param {string} userId 
  */
@@ -124,9 +134,11 @@ export async function getFullLearnerProfile(userId) {
     where: { userId },
     include: {
       skills: true,
+      goals: true,
+      learnerInterests: true,
+      insights: true,
       weaknessEntries: true,
-      historyEvents: { orderBy: { occurredAt: 'desc' }, take: 10 },
-      progressSnapshots: { orderBy: { generatedAt: 'desc' }, take: 5 }
+      historyEvents: { orderBy: { occurredAt: 'desc' }, take: 10 }
     }
   });
 
@@ -136,9 +148,11 @@ export async function getFullLearnerProfile(userId) {
       where: { id: profile.id },
       include: {
         skills: true,
+        goals: true,
+        learnerInterests: true,
+        insights: true,
         weaknessEntries: true,
-        historyEvents: { orderBy: { occurredAt: 'desc' }, take: 10 },
-        progressSnapshots: { orderBy: { generatedAt: 'desc' }, take: 5 }
+        historyEvents: { orderBy: { occurredAt: 'desc' }, take: 10 }
       }
     });
   }
@@ -152,24 +166,32 @@ export async function getFullLearnerProfile(userId) {
 export async function upsertSkillNode(userId, skillData) {
   const profile = await getFullLearnerProfile(userId);
 
+  const masteryScore = skillData.masteryScore ?? 0;
+  let masteryState = 'learning';
+  if (masteryScore >= 85) masteryState = 'mastered';
+  else if (masteryScore >= 50) masteryState = 'practicing';
+
   return prisma.learnerSkill.upsert({
     where: { profileId_name: { profileId: profile.id, name: skillData.name } },
     update: {
       category: skillData.category,
       proficiencyLevel: skillData.proficiencyLevel || 'beginner',
-      masteryScore: skillData.masteryScore ?? 0,
+      masteryScore,
       confidenceScore: skillData.confidenceScore ?? 0,
       evidenceCount: { increment: 1 },
+      masteryState,
       lastPracticedAt: new Date()
     },
     create: {
       profileId: profile.id,
+      userId,
       name: skillData.name,
       category: skillData.category,
       proficiencyLevel: skillData.proficiencyLevel || 'beginner',
-      masteryScore: skillData.masteryScore ?? 0,
+      masteryScore,
       confidenceScore: skillData.confidenceScore ?? 0,
       evidenceCount: 1,
+      masteryState,
       lastPracticedAt: new Date()
     }
   });
