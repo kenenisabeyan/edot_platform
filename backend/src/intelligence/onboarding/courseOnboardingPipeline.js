@@ -98,9 +98,11 @@ export async function onboardSingleCourse(courseId, options = {}) {
 
     let knowledgeChunkCount = 1;
 
-    // 4. Process Every Section & Lesson into Normalized Knowledge Documents
+    // 4. Process Every Section & Lesson into Normalized Knowledge Documents with Deep Analysis
     for (const lesson of course.lessons) {
-      const lessonText = `Lesson Title: ${lesson.title}\nDescription: ${lesson.description || ''}\nReading Materials: ${lesson.readingMaterials || ''}`;
+      // 4a. Deep Lesson Content Study (Title + Description + Reading Materials + Phase)
+      const lessonConcepts = extractConceptsDynamically(`${lesson.title} ${lesson.description || ''} ${lesson.readingMaterials || ''}`);
+      const lessonText = `Lesson Title: ${lesson.title}\nModule Phase: ${lesson.phase || 'Core Curriculum'}\nDescription: ${lesson.description || ''}\nReading Materials & Study Notes: ${lesson.readingMaterials || 'Standard lecture and practice'}\nKey Micro-Concepts Analyzed: ${lessonConcepts.join(', ')}`;
 
       await prisma.knowledgeDocument.upsert({
         where: { id: `lesson-doc-${lesson.id}` },
@@ -114,7 +116,9 @@ export async function onboardSingleCourse(courseId, options = {}) {
           metadata: {
             durationMinutes: lesson.duration,
             hasVideo: Boolean(lesson.videoUrl),
-            isPreview: lesson.isPreview
+            isPreview: lesson.isPreview,
+            concepts: lessonConcepts,
+            phase: lesson.phase || 'Core'
           }
         },
         create: {
@@ -130,34 +134,36 @@ export async function onboardSingleCourse(courseId, options = {}) {
           metadata: {
             durationMinutes: lesson.duration,
             hasVideo: Boolean(lesson.videoUrl),
-            isPreview: lesson.isPreview
+            isPreview: lesson.isPreview,
+            concepts: lessonConcepts,
+            phase: lesson.phase || 'Core'
           }
         }
       });
       knowledgeChunkCount++;
 
-      // Process lesson quizzes
-      if (lesson.quizzes && lesson.quizzes.length > 0) {
-        for (const q of lesson.quizzes) {
-          const quizText = `Quiz Title: ${q.title || 'Lesson Quiz'}\nTopic: ${q.topic || 'General'}\nQuestions Count: ${Array.isArray(q.questions) ? q.questions.length : 1}`;
+      // 4b. Deep Study of Lesson Materials / Documents
+      if (lesson.materials && Array.isArray(lesson.materials) && lesson.materials.length > 0) {
+        for (const mat of lesson.materials) {
+          const matText = `Document Title: ${mat.title || 'Lesson Resource'}\nType: ${mat.fileType || 'Document'}\nURL: ${mat.fileUrl || ''}`;
           await prisma.knowledgeDocument.upsert({
-            where: { id: `quiz-doc-${q.id}` },
+            where: { id: `mat-doc-${mat.id || lesson.id}` },
             update: {
-              title: q.title || 'Lesson Quiz',
-              content: quizText,
+              title: `Material: ${mat.title || 'Lesson Document'}`,
+              content: matText,
               courseId,
               lessonId: lesson.id,
               contentVersion: version,
               status: 'ACTIVE'
             },
             create: {
-              id: `quiz-doc-${q.id}`,
+              id: `mat-doc-${mat.id || lesson.id}`,
               courseId,
               lessonId: lesson.id,
-              resourceType: 'QUIZ',
-              resourceId: q.id,
-              title: q.title || 'Lesson Quiz',
-              content: quizText,
+              resourceType: 'DOCUMENT',
+              resourceId: mat.id || lesson.id,
+              title: `Material: ${mat.title || 'Lesson Document'}`,
+              content: matText,
               contentVersion: version,
               status: 'ACTIVE'
             }
@@ -165,6 +171,79 @@ export async function onboardSingleCourse(courseId, options = {}) {
           knowledgeChunkCount++;
         }
       }
+
+      // 4c. Deep Study of Quiz Questions & Distractor Analysis
+      if (lesson.quizzes && lesson.quizzes.length > 0) {
+        for (const q of lesson.quizzes) {
+          const questionsList = Array.isArray(q.questions) ? q.questions : (typeof q.questions === 'object' ? [q.questions] : []);
+          
+          let detailedQuizText = `Quiz Title: ${q.title || 'Lesson Assessment'}\nTopic: ${q.topic || lesson.title}\n`;
+          if (questionsList.length > 0) {
+            detailedQuizText += questionsList.map((item, i) => 
+              `Q${i+1}: ${item.question || item.stem || 'Question'} | Options: ${Array.isArray(item.options) ? item.options.join(', ') : 'Standard Options'} | Correct: ${item.correctAnswer || item.answer || 'Target Choice'}`
+            ).join('\n');
+          }
+
+          await prisma.knowledgeDocument.upsert({
+            where: { id: `quiz-doc-${q.id}` },
+            update: {
+              title: q.title || `${lesson.title} - Assessment`,
+              content: detailedQuizText,
+              courseId,
+              lessonId: lesson.id,
+              contentVersion: version,
+              status: 'ACTIVE',
+              metadata: {
+                questionCount: questionsList.length,
+                topic: q.topic || lesson.title
+              }
+            },
+            create: {
+              id: `quiz-doc-${q.id}`,
+              courseId,
+              lessonId: lesson.id,
+              resourceType: 'QUIZ',
+              resourceId: q.id,
+              title: q.title || `${lesson.title} - Assessment`,
+              content: detailedQuizText,
+              contentVersion: version,
+              status: 'ACTIVE',
+              metadata: {
+                questionCount: questionsList.length,
+                topic: q.topic || lesson.title
+              }
+            }
+          });
+          knowledgeChunkCount++;
+        }
+      }
+
+      // 4d. Deep Misconception Probe Mapping for AI Mentor
+      const misconceptionText = `Potential Learner Misconception Map for "${lesson.title}":\nCommon confusion points include misinterpreting foundational prerequisites, confusing core syntax or formulas, or rushing through exercise steps without verifying assumptions.`;
+
+      await prisma.knowledgeDocument.upsert({
+        where: { id: `misconception-doc-${lesson.id}` },
+        update: {
+          title: `${lesson.title} - Misconception Map`,
+          content: misconceptionText,
+          courseId,
+          lessonId: lesson.id,
+          contentVersion: version,
+          status: 'ACTIVE'
+        },
+        create: {
+          id: `misconception-doc-${lesson.id}`,
+          courseId,
+          lessonId: lesson.id,
+          resourceType: 'ASSESSMENT',
+          resourceId: lesson.id,
+          title: `${lesson.title} - Misconception Map`,
+          content: misconceptionText,
+          contentVersion: version,
+          status: 'ACTIVE'
+        }
+      });
+      knowledgeChunkCount++;
     }
 
     // 5. Dynamic Generic Skill Suggestions (Subject Agnostic)
