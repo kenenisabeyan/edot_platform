@@ -106,6 +106,7 @@ model User {
   learningSessions     LearningSession[]
   analyticsReport      LearnerAnalyticsReport?
   learningEvents       LearningEvent[]       @relation("UserLearningEvents")
+  mentorSessions       MentorSession[]       @relation("UserMentorSessions")
 }
 
 model LearnerProfile {
@@ -1232,4 +1233,34 @@ model LearningEvent {
   @@index([eventType, timestamp])
   @@index([courseId, timestamp])
   @@index([userId, eventType, timestamp])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Mentor Session Audit Store
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MentorSession {
+  id                    String   @id @default(uuid())
+  sessionId             String   @unique @default(uuid())
+  userId                String
+  user                  User     @relation("UserMentorSessions", fields: [userId], references: [id], onDelete: Cascade)
+  courseId              String?
+  lessonId              String?
+  promptSummary         String
+  responseSummary       String
+  feedbackScore         Int?
+  feedbackComment       String?
+  contextVersion        String   @default("v2.1")
+  sources               Json?
+  suggestedNextActions  Json?
+  confidenceScore       Float    @default(0.95)
+  needsHumanSupport     Boolean  @default(false)
+  tokenCount            Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([createdAt])
 }

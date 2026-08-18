@@ -33,6 +33,7 @@ import LearningProfileCard from '../components/LearningProfileCard';
 import IntelligentLearningAnalytics from '../components/IntelligentLearningAnalytics';
 import RecommendationEnginePanel from '../components/RecommendationEnginePanel';
 import IntelligencePanel from '../components/IntelligencePanel';
+import ContextualMentorDrawer from '../components/ContextualMentorDrawer';
 
 const DB_CATEGORY_MAP = {
   "Social Sciences": "Social Science",
@@ -1050,6 +1051,7 @@ export default function StudentDashboard() {
             {renderContent()}
           </div>
         </main>
+        <ContextualMentorDrawer isDarkMode={isDarkMode} />
       </div>
     </div>
   );
