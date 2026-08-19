@@ -190,10 +190,10 @@ const StudentOverview = ({
         {/* Left Content */}
         <div className="relative z-10 flex-1 min-w-[300px]">
           <h1 className={`text-3xl md:text-[34px] font-black mb-3 font-['Inter',sans-serif] tracking-tight leading-tight flex flex-col sm:flex-row sm:items-center gap-3 ${isDarkMode ? 'text-white' : 'text-[#111827]'}`}>
-            <span>Welcome back, {user?.name?.split(' ')[0] || 'Student'}! <span className="text-3xl">👋</span></span>
-            {user?.learnerGroups && user.learnerGroups.length > 0 && (
-                <span className={`text-[10px] sm:ml-2 font-bold px-2.5 py-1 rounded-full uppercase tracking-widest w-max ${isDarkMode ? 'bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
-                    {user.learnerGroups[0].name}
+            <span>Welcome back, {user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'Learner'}! <span className="text-3xl">👋</span></span>
+            {(user?.position || (user?.learnerGroups && user.learnerGroups.length > 0) || user?.role) && (
+                <span className={`text-[10px] sm:ml-2 font-bold px-3 py-1 rounded-full uppercase tracking-widest w-max shadow-sm ${isDarkMode ? 'bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/30' : 'bg-indigo-100 text-indigo-800 border border-indigo-200'}`}>
+                    {user?.position || user?.learnerGroups?.[0]?.name || user?.role}
                 </span>
             )}
           </h1>
