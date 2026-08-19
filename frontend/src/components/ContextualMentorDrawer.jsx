@@ -25,8 +25,20 @@ import {
 import api from '../utils/api.js';
 import ContinuousVoiceMentorDrawer from './ContinuousVoiceMentorDrawer.jsx';
 
-export default function ContextualMentorDrawer({ isDarkMode = false, currentCourseId = null, currentLessonId = null }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function ContextualMentorDrawer({ 
+  isDarkMode = false, 
+  currentCourseId = null, 
+  currentLessonId = null,
+  isOpen: externalIsOpen = false,
+  onClose: externalOnClose = null
+}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = externalIsOpen || internalIsOpen;
+  
+  const handleClose = () => {
+    setInternalIsOpen(false);
+    if (externalOnClose) externalOnClose();
+  };
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [messages, setMessages] = useState([
@@ -176,7 +188,7 @@ export default function ContextualMentorDrawer({ isDarkMode = false, currentCour
                 Voice Mode
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className={`p-2 rounded-xl transition-colors cursor-pointer ${isDarkMode ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-200 hover:text-slate-800'}`}
               >
                 <X className="w-4 h-4" />
