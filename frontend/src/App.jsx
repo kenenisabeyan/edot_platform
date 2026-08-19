@@ -22,49 +22,68 @@ import { useAuth } from './context/AuthContext';
 
 import EDOTLayout from './components/EDOTLayout';
 
+// Smart Lazy loader helper with automatic retry & reload for dynamic chunk load failures on new Vercel deployments
+function lazyWithRetry(componentImport) {
+  return lazy(async () => {
+    try {
+      const component = await componentImport();
+      sessionStorage.removeItem('chunk_reload_attempted');
+      return component;
+    } catch (error) {
+      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload_attempted', 'true');
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
 // Lazy load heavy dashboard and management pages
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const InstructorDashboard = lazy(() => import('./pages/InstructorDashboard'));
-const InstructorCourseBuilder = lazy(() => import('./pages/InstructorCourseBuilder'));
-const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
-const CourseDetails = lazy(() => import('./pages/CourseDetails'));
-const Lesson = lazy(() => import('./pages/Lesson'));
-const QuizViewer = lazy(() => import('./pages/QuizViewer'));
+const AdminDashboard = lazyWithRetry(() => import('./pages/AdminDashboard'));
+const InstructorDashboard = lazyWithRetry(() => import('./pages/InstructorDashboard'));
+const InstructorCourseBuilder = lazyWithRetry(() => import('./pages/InstructorCourseBuilder'));
+const StudentDashboard = lazyWithRetry(() => import('./pages/StudentDashboard'));
+const CourseDetails = lazyWithRetry(() => import('./pages/CourseDetails'));
+const Lesson = lazyWithRetry(() => import('./pages/Lesson'));
+const QuizViewer = lazyWithRetry(() => import('./pages/QuizViewer'));
 
 // Lazy load dashboard management pages
-const EDOTDashboard = lazy(() => import('./pages/EDOTDashboard'));
-const TeachersList = lazy(() => import('./pages/TeachersList'));
-const StudentsList = lazy(() => import('./pages/StudentsList'));
-const FinanceFees = lazy(() => import('./pages/FinanceFees'));
-const FinanceExpenses = lazy(() => import('./pages/FinanceExpenses'));
-const CalendarView = lazy(() => import('./pages/CalendarView'));
-const MessagesView = lazy(() => import('./pages/MessagesView'));
-const StudentCourses = lazy(() => import('./pages/StudentCourses'));
-const InstructorClasses = lazy(() => import('./pages/InstructorClasses'));
-const InstructorManageCourses = lazy(() => import('./pages/InstructorManageCourses'));
-const AdminCourseApprovals = lazy(() => import('./pages/AdminCourseApprovals'));
-const CertificatesView = lazy(() => import('./pages/CertificatesView'));
-const NoticeView = lazy(() => import('./pages/NoticeView'));
-const LibraryView = lazy(() => import('./pages/LibraryView'));
-const ProfileView = lazy(() => import('./pages/ProfileView'));
-const ParentLearners = lazy(() => import('./pages/ParentLearners'));
-const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement'));
-const Revenue = lazy(() => import('./pages/Revenue'));
-const Performance = lazy(() => import('./pages/Performance'));
-const TeachingActivity = lazy(() => import('./pages/TeachingActivity'));
-const AnalyticsReport = lazy(() => import('./pages/AnalyticsReport'));
-const SettingsView = lazy(() => import('./pages/SettingsView'));
-const UsersManagement = lazy(() => import('./pages/UsersManagement'));
-const SectionManagement = lazy(() => import('./pages/SectionManagement'));
-const SupportDashboard = lazy(() => import('./pages/SupportDashboard'));
-const SponsorDashboard = lazy(() => import('./pages/SponsorDashboard'));
-const LiveClassesView = lazy(() => import('./pages/LiveClassesView'));
-const EcosystemView = lazy(() => import('./pages/EcosystemView'));
-const StudyGoalView = lazy(() => import('./pages/StudyGoalView'));
-const AchievementsView = lazy(() => import('./pages/AchievementsView'));
-const StudyTools = lazy(() => import('./pages/StudyTools'));
-const CareerCenter = lazy(() => import('./pages/CareerCenter'));
-const AdminIntelligenceDashboard = lazy(() => import('./pages/AdminIntelligenceDashboard'));
+const EDOTDashboard = lazyWithRetry(() => import('./pages/EDOTDashboard'));
+const TeachersList = lazyWithRetry(() => import('./pages/TeachersList'));
+const StudentsList = lazyWithRetry(() => import('./pages/StudentsList'));
+const FinanceFees = lazyWithRetry(() => import('./pages/FinanceFees'));
+const FinanceExpenses = lazyWithRetry(() => import('./pages/FinanceExpenses'));
+const CalendarView = lazyWithRetry(() => import('./pages/CalendarView'));
+const MessagesView = lazyWithRetry(() => import('./pages/MessagesView'));
+const StudentCourses = lazyWithRetry(() => import('./pages/StudentCourses'));
+const InstructorClasses = lazyWithRetry(() => import('./pages/InstructorClasses'));
+const InstructorManageCourses = lazyWithRetry(() => import('./pages/InstructorManageCourses'));
+const AdminCourseApprovals = lazyWithRetry(() => import('./pages/AdminCourseApprovals'));
+const CertificatesView = lazyWithRetry(() => import('./pages/CertificatesView'));
+const NoticeView = lazyWithRetry(() => import('./pages/NoticeView'));
+const LibraryView = lazyWithRetry(() => import('./pages/LibraryView'));
+const ProfileView = lazyWithRetry(() => import('./pages/ProfileView'));
+const ParentLearners = lazyWithRetry(() => import('./pages/ParentLearners'));
+const AttendanceManagement = lazyWithRetry(() => import('./pages/AttendanceManagement'));
+const Revenue = lazyWithRetry(() => import('./pages/Revenue'));
+const Performance = lazyWithRetry(() => import('./pages/Performance'));
+const TeachingActivity = lazyWithRetry(() => import('./pages/TeachingActivity'));
+const AnalyticsReport = lazyWithRetry(() => import('./pages/AnalyticsReport'));
+const SettingsView = lazyWithRetry(() => import('./pages/SettingsView'));
+const UsersManagement = lazyWithRetry(() => import('./pages/UsersManagement'));
+const SectionManagement = lazyWithRetry(() => import('./pages/SectionManagement'));
+const SupportDashboard = lazyWithRetry(() => import('./pages/SupportDashboard'));
+const SponsorDashboard = lazyWithRetry(() => import('./pages/SponsorDashboard'));
+const LiveClassesView = lazyWithRetry(() => import('./pages/LiveClassesView'));
+const EcosystemView = lazyWithRetry(() => import('./pages/EcosystemView'));
+const StudyGoalView = lazyWithRetry(() => import('./pages/StudyGoalView'));
+const AchievementsView = lazyWithRetry(() => import('./pages/AchievementsView'));
+const StudyTools = lazyWithRetry(() => import('./pages/StudyTools'));
+const CareerCenter = lazyWithRetry(() => import('./pages/CareerCenter'));
+const AdminIntelligenceDashboard = lazyWithRetry(() => import('./pages/AdminIntelligenceDashboard'));
 
 
 
