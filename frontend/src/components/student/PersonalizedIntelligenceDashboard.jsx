@@ -4,14 +4,15 @@
  * EDOT Course-First, Data-Grounded Student Intelligence Hub.
  * 
  * Architecture Principles:
- *   1. COURSE-FIRST: Intelligence is grounded in real enrolled courses and lessons.
- *   2. CONTEXT-AWARE: AI Mentor & Voice Mentor receive studentId, courseId, sectionId, lessonId.
- *   3. DATA-GROUNDED: Zero fabricated claims — insights show explicit source evidence.
- *   4. DYNAMIC: Works for 0, 1, 5, or 50 courses without hardcoding.
- *   5. NO BLACK COLORS: Uses luminous glassmorphic gradients and ultra-modern aesthetic.
+ *   1. REAL USER CONTENT & POSITION: All headers, badges, and metrics reflect real user position, enrolled courses, and activity.
+ *   2. REAL COURSE GROUNDING: Intelligence is grounded in real enrolled courses and lessons.
+ *   3. CONTEXT-AWARE: AI Mentor & Voice Mentor receive studentId, courseId, sectionId, lessonId.
+ *   4. DATA-GROUNDED: Zero fabricated claims — insights show explicit source evidence.
+ *   5. DYNAMIC: Works for 0, 1, 5, or 50 courses without hardcoding.
+ *   6. NO BLACK COLORS: Uses luminous glassmorphic gradients and ultra-modern aesthetic.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, 
@@ -34,7 +35,9 @@ import {
   Check,
   AlertCircle,
   Clock,
-  Compass
+  Compass,
+  UserCheck,
+  Briefcase
 } from 'lucide-react';
 import api from '../../utils/api.js';
 import CourseFallbackThumbnail from '../CourseFallbackThumbnail.jsx';
@@ -78,9 +81,23 @@ export default function PersonalizedIntelligenceDashboard({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // User Position & Role Title
+  const userPosition = useMemo(() => {
+    if (user?.position) return user.position;
+    if (user?.learnerGroups && user.learnerGroups.length > 0) return user.learnerGroups[0].name;
+    if (user?.role) return user.role.toUpperCase();
+    return 'EDOT Student Learner';
+  }, [user]);
+
   // Derive Primary Active Enrollment & Lesson
-  const activeEnrollments = enrolledCourses.filter(e => e.status !== 'dropped');
-  const primaryEnrollment = activeEnrollments.find(e => e.status === 'active' || (e.progress > 0 && e.progress < 100)) || activeEnrollments[0] || null;
+  const activeEnrollments = useMemo(() => {
+    return (enrolledCourses || []).filter(e => e.status !== 'dropped');
+  }, [enrolledCourses]);
+
+  const primaryEnrollment = useMemo(() => {
+    return activeEnrollments.find(e => e.status === 'active' || (e.progress > 0 && e.progress < 100)) || activeEnrollments[0] || null;
+  }, [activeEnrollments]);
+
   const primaryCourse = primaryEnrollment?.course || null;
   const primaryLesson = primaryEnrollment?.lastAccessedLesson || primaryCourse?.lessons?.[0] || null;
 
@@ -126,21 +143,37 @@ export default function PersonalizedIntelligenceDashboard({
     }
   };
 
-  // Grounded Daily Challenge Question based on active course or baseline topic
-  const dailyQuestion = {
-    concept: primaryCourse ? `Core Concepts in ${primaryCourse.title}` : 'Modern Learning Methodology',
-    question: primaryCourse 
-      ? `When studying "${primaryCourse.title}", why is active recall and verbal practice superior to passive re-reading?`
-      : 'Why should complex learning topics be broken down into structured, bite-sized lessons with immediate feedback checkpoints?',
-    options: [
-      'Active recall strengthens neural pathways, identifies mental misconceptions early, and boosts long-term retention',
-      'Because passive reading consumes zero cognitive effort',
-      'To skip all course assessment requirements',
-      'Because memory strength does not depend on practice repetition'
-    ],
-    correctIndex: 0,
-    explanation: 'Active recall forces your brain to retrieve knowledge, producing significantly stronger memory consolidation and instant understanding feedback.'
-  };
+  // Grounded Daily Challenge Question dynamically generated from real active course
+  const dailyQuestion = useMemo(() => {
+    if (primaryCourse) {
+      return {
+        concept: `Core Mastery: ${primaryCourse.title}`,
+        question: primaryLesson 
+          ? `In "${primaryLesson.title}" within ${primaryCourse.title}, what is the primary learning objective to master?`
+          : `When studying "${primaryCourse.title}", why is active recall and concept application superior to passive reading?`,
+        options: [
+          `Active recall in ${primaryCourse.category || 'this subject'} strengthens mental pathways, catches misconceptions, and builds verifiable mastery`,
+          'Because passive reading requires zero cognitive effort',
+          'To skip course assessments entirely',
+          'Because concept retention is unrelated to practice frequency'
+        ],
+        correctIndex: 0,
+        explanation: `Consistently applying active recall in ${primaryCourse.title} consolidates knowledge in long-term memory and boosts your Skill Passport score.`
+      };
+    }
+    return {
+      concept: 'EDOT Adaptive Learning Methodology',
+      question: 'Why should complex educational topics be broken down into structured, bite-sized lessons with immediate feedback checkpoints?',
+      options: [
+        'Structured micro-lessons reduce cognitive overload, identify knowledge gaps instantly, and maximize retention',
+        'Because long unsegmented lectures are easier to memorize',
+        'To eliminate the need for student practice',
+        'Because lesson structure has no impact on learning velocity'
+      ],
+      correctIndex: 0,
+      explanation: 'Micro-learning with immediate checks creates tight feedback loops, accelerating mastery and boosting overall learning velocity.'
+    };
+  }, [primaryCourse, primaryLesson]);
 
   return (
     <div className="w-full space-y-7 transition-all duration-300">
@@ -153,7 +186,7 @@ export default function PersonalizedIntelligenceDashboard({
       )}
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
-      {/* HEADER & LEARNER STATUS BAR */}
+      {/* HEADER & LEARNER STATUS BAR WITH REAL USER NAME & POSITION */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       <div className={`p-6 md:p-8 rounded-[32px] border relative overflow-hidden transition-all shadow-xl ${
         isDarkMode 
@@ -162,20 +195,25 @@ export default function PersonalizedIntelligenceDashboard({
       }`}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[11px] font-black uppercase tracking-wider shadow-md shadow-cyan-500/20">
                 COURSE-GROUNDED INTELLIGENCE
               </span>
+              <span className={`px-3 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${
+                isDarkMode ? 'bg-white/10 text-cyan-300 border-white/20' : 'bg-indigo-100 text-indigo-800 border-indigo-200'
+              }`}>
+                <Briefcase className="w-3.5 h-3.5" /> Position: {userPosition}
+              </span>
               <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                <ShieldCheck className="w-4 h-4" /> SHA-256 Verified Ledger
+                <ShieldCheck className="w-4 h-4" /> SHA-256 Verified
               </span>
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2">
-              <span>{user?.name ? `${user.name}'s Learning Command Center` : 'Learning Command Center'}</span>
+              <span>{user?.name ? `${user.name}'s Learning Command Center` : 'Learner Command Center'}</span>
             </h2>
             <p className={`text-xs sm:text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              Grounding all AI recommendations in your <span className="font-extrabold text-cyan-500">{activeEnrollments.length} active course enrollments</span> & performance data.
+              Grounded in your <span className="font-extrabold text-cyan-400">{activeEnrollments.length} active course enrollments</span> & real learning activity.
             </p>
           </div>
 
@@ -245,7 +283,7 @@ export default function PersonalizedIntelligenceDashboard({
                 <div>
                   <h3 className="text-xl sm:text-2xl font-black tracking-tight">{primaryCourse.title}</h3>
                   <p className={`text-xs font-medium mt-1 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Current Lesson: <span className="font-bold text-cyan-500">{primaryLesson?.title || 'Lesson 1: Introduction'}</span>
+                    Current Lesson: <span className="font-bold text-cyan-400">{primaryLesson?.title || 'Lesson 1: Introduction'}</span>
                   </p>
                 </div>
 
@@ -253,7 +291,7 @@ export default function PersonalizedIntelligenceDashboard({
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-xs font-bold">
                     <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>Course Mastery Progress</span>
-                    <span className="text-cyan-500 font-black">{primaryEnrollment.progress || 0}%</span>
+                    <span className="text-cyan-400 font-black">{primaryEnrollment.progress || 0}%</span>
                   </div>
                   <div className={`h-3 w-full rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
                     <div 
@@ -480,10 +518,10 @@ export default function PersonalizedIntelligenceDashboard({
             {primaryCourse ? (
               <div className="space-y-2">
                 <h4 className="text-sm font-black">{primaryCourse.title}</h4>
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-300">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-300 space-y-1">
                   <p className="font-bold">Evidence Grounded In Real Activity:</p>
-                  <p className="mt-1 text-slate-300">• Lesson completion velocity: Strong</p>
-                  <p className="text-slate-300">• Practice accuracy: High (88% average)</p>
+                  <p className="text-slate-300">• Enrolled Progress: {primaryEnrollment?.progress || 0}% complete</p>
+                  <p className="text-slate-300">• Instructor: {primaryCourse.instructor?.name || 'EDOT Faculty'}</p>
                 </div>
               </div>
             ) : (
@@ -502,9 +540,9 @@ export default function PersonalizedIntelligenceDashboard({
             </span>
             <div className="space-y-2">
               <h4 className="text-sm font-black">Across All Enrolled Courses</h4>
-              <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-xs font-semibold text-cyan-300">
+              <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-xs font-semibold text-cyan-300 space-y-1">
                 <p className="font-bold">Verified Learning Metrics:</p>
-                <p className="mt-1 text-slate-300">• Total Lessons Completed: {totalLessonsCompleted}</p>
+                <p className="text-slate-300">• Total Lessons Completed: {totalLessonsCompleted}</p>
                 <p className="text-slate-300">• Overall Mastery Average: {averageProgress}%</p>
               </div>
             </div>
@@ -605,7 +643,7 @@ export default function PersonalizedIntelligenceDashboard({
       </div>
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
-      {/* DRAWER & MODAL COMPONENTS */}
+      {/* DRAWER COMPONENTS */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       <ContextualMentorDrawer
         isDarkMode={isDarkMode}
