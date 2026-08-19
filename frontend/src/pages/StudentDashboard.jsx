@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { 
   BookOpen, CheckCircle2, Award, Search, LayoutDashboard, 
@@ -494,8 +494,16 @@ const handleDownloadCertificate = async (enrolled, userName, action = 'download'
 export default function StudentDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'overview';
+
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    }, { replace: true });
+  };
   const isDarkMode = useThemeMode();
   const [growthNote, setGrowthNote] = useState('');
   
