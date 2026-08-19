@@ -65,16 +65,21 @@ export default function ContextualMentorDrawer({
     });
   };
   const [loading, setLoading] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState({});
+  const containerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottomIfNearBottom = (force = false) => {
+    if (!containerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+    if (force || isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
+      scrollToBottomIfNearBottom();
     }
   }, [messages, isOpen]);
 
@@ -208,7 +213,7 @@ export default function ContextualMentorDrawer({
           </div>
 
           {/* Messages Area */}
-          <div className={`flex-1 overflow-y-auto p-5 space-y-6 ${isDarkMode ? 'bg-indigo-950/20' : 'bg-indigo-50/20'}`}>
+          <div ref={containerRef} className={`flex-1 overflow-y-auto p-5 space-y-6 ${isDarkMode ? 'bg-indigo-950/20' : 'bg-indigo-50/20'}`}>
             {messages.map((msg) => (
               <div
                 key={msg.id}
