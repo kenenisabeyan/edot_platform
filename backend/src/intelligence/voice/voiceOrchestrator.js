@@ -23,6 +23,7 @@ import SpeechToTextProvider from './providers/sttProvider.js';
 import TextGenerationProvider from './providers/textGenProvider.js';
 import TextToSpeechProvider from './providers/ttsProvider.js';
 import ContextCompressor from './contextCompressor.js';
+import ContinuousConversationManager from './continuousConversationManager.js';
 import { publishLearningEvent } from '../events/learningEventService.js';
 
 export class VoiceOrchestrator {
@@ -193,9 +194,14 @@ export class VoiceOrchestrator {
     });
 
     // ──────────────────────────────────────────────
-    // STAGE 4: Compress older context if necessary
+    // STAGE 4: Manage context window boundaries seamlessly
     // ──────────────────────────────────────────────
-    await ContextCompressor.compressIfNecessary(conversationId, 10);
+    await ContinuousConversationManager.manageContextWindow(conversationId, {
+      maxActiveTurns: 8,
+      courseId,
+      sectionId,
+      lessonId
+    });
 
     // ──────────────────────────────────────────────
     // STAGE 5: EDOT CONTEXT ENGINE
