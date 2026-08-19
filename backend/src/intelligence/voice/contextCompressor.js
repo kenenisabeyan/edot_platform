@@ -5,7 +5,7 @@
  * Ensures long learning conversations remain continuous without exposing token limit errors.
  */
 
-import { prisma } from '../../lib/prisma.js';
+import { prisma } from '../../../lib/prisma.js';
 
 export class ContextCompressor {
   /**

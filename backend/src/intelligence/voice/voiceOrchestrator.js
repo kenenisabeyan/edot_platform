@@ -6,7 +6,7 @@
  * barge-in cancellation tracking, and voice learning sessions.
  */
 
-import { prisma } from '../../lib/prisma.js';
+import { prisma } from '../../../lib/prisma.js';
 import SpeechToTextProvider from './providers/sttProvider.js';
 import TextGenerationProvider from './providers/textGenProvider.js';
 import TextToSpeechProvider from './providers/ttsProvider.js';

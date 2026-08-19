@@ -63,10 +63,13 @@ async function runVoiceMentorTests() {
       slug: `voice-ai-${timeId}`,
       description: 'Understanding real-time speech architectures',
       mainCategory: 'Programming & Technology',
+      subCategory: 'Speech AI',
       level: 'intermediate',
       status: 'active',
       isPublished: true,
-      price: 0
+      price: 0,
+      duration: 10.0,
+      instructorId: student.id
     }
   });
 
@@ -74,7 +77,10 @@ async function runVoiceMentorTests() {
     data: {
       courseId: newCourse.id,
       title: `Speech Synthesis & Acoustic Models ${timeId}`,
-      duration: 20
+      description: 'Acoustic waveform synthesis and neural TTS pipelines',
+      videoUrl: 'https://example.com/videos/speech.mp4',
+      duration: 20,
+      order: 1
     }
   });
 
@@ -183,7 +189,9 @@ async function runVoiceMentorTests() {
   console.log('✅ Requirement 6 PASSED\n');
 
   // Clean up test entities
-  await prisma.voiceLearningSession.deleteMany({ where: { learnerId: newStudent.id } });
+  await prisma.voiceLearningSession.deleteMany({ where: { OR: [{ learnerId: newStudent.id }, { courseId: newCourse.id }] } });
+  await prisma.userCourseProgress.deleteMany({ where: { courseId: newCourse.id } });
+  await prisma.enrollment.deleteMany({ where: { courseId: newCourse.id } });
   await prisma.user.delete({ where: { id: newStudent.id } });
   await prisma.lesson.delete({ where: { id: newLesson.id } });
   await prisma.course.delete({ where: { id: newCourse.id } });
