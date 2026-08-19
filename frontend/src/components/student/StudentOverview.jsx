@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import PremiumModal from '../PremiumModal';
+import ErrorBoundary from '../ErrorBoundary';
 import PersonalizedIntelligenceDashboard from './PersonalizedIntelligenceDashboard';
 
 const StudentOverview = ({ 
@@ -171,15 +172,17 @@ const StudentOverview = ({
 <motion.div variants={containerVariants} initial="hidden" animate="visible" className="relative space-y-6 w-full max-w-none pb-10" ref={dropdownRef}>
       
       {/* Personalized Intelligence Layer Dashboard */}
-      <PersonalizedIntelligenceDashboard 
-        isDarkMode={isDarkMode} 
-        onNavigateTab={setActiveTab}
-        user={user}
-        enrolledCourses={enrolledCourses}
-        completedCourses={completedCourses}
-        totalLessonsCompleted={totalLessonsCompleted}
-        averageProgress={averageProgress}
-      />
+      <ErrorBoundary>
+        <PersonalizedIntelligenceDashboard 
+          isDarkMode={isDarkMode} 
+          onNavigateTab={setActiveTab}
+          user={user}
+          enrolledCourses={enrolledCourses}
+          completedCourses={completedCourses}
+          totalLessonsCompleted={totalLessonsCompleted}
+          averageProgress={averageProgress}
+        />
+      </ErrorBoundary>
 
       {/* Hero Banner */}
       {/* Hero Banner */}
