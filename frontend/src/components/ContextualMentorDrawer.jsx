@@ -158,7 +158,8 @@ export default function ContextualMentorDrawer({
       {/* Floating Toggle Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          type="button"
+          onClick={() => setInternalIsOpen(true)}
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-[0_8px_30px_rgba(6,182,212,0.4)] hover:scale-105 transition-all duration-300 group"
         >
           <div className="relative">
@@ -196,6 +197,7 @@ export default function ContextualMentorDrawer({
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setIsVoiceOpen(true)}
                 className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 hover:scale-105 active:scale-95 cursor-pointer"
                 title="Launch Continuous AI Voice Mentor"
@@ -204,6 +206,7 @@ export default function ContextualMentorDrawer({
                 Voice Mode
               </button>
               <button
+                type="button"
                 onClick={handleClose}
                 className={`p-2 rounded-xl transition-colors cursor-pointer ${isDarkMode ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-200 hover:text-slate-800'}`}
               >
