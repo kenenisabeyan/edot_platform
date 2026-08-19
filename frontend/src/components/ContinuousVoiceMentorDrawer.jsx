@@ -201,29 +201,46 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-slate-900 text-white shadow-2xl border-l border-slate-800 flex flex-col font-sans animate-in slide-in-from-right duration-300">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/80 backdrop-blur-md">
+    <div 
+      className={`fixed top-0 right-0 h-full w-full sm:w-[450px] z-50 transition-all duration-300 shadow-2xl flex flex-col ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      } ${
+        isDarkMode 
+          ? 'bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 border-l border-cyan-400/30 text-white shadow-cyan-500/10' 
+          : 'bg-gradient-to-b from-white via-indigo-50/50 to-slate-50 border-l border-indigo-200 text-slate-900 shadow-indigo-500/20'
+      }`}
+    >
+      {/* Header Bar */}
+      <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'border-white/10 bg-white/5 backdrop-blur-md' : 'border-indigo-100 bg-white/80 backdrop-blur-md'}`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 animate-pulse" />
+          <div className="relative">
+            <span className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 animate-spin-slow" />
+            </span>
+            <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 ${isDarkMode ? 'border-slate-900' : 'border-white'} ${status === 'AI_SPEAKING' ? 'bg-cyan-400 animate-ping' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'}`} />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-white">EDOT Voice Mentor</h2>
-            <p className="text-[11px] text-slate-400">Continuous AI Learning Assistant</p>
+            <h3 className="font-black text-sm tracking-tight flex items-center gap-1.5">
+              <span>EDOT Continuous Voice Mentor</span>
+              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-mono">3.6 Flash</span>
+            </h3>
+            <p className={`text-[11px] font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-500'}`}>
+              Real-Time Conversational Tutor
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button 
             onClick={() => setShowSettings(!showSettings)}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${isDarkMode ? 'text-slate-300 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            title="Voice Settings"
           >
             <Settings className="w-4 h-4" />
           </button>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${isDarkMode ? 'text-slate-300 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
           >
             <X className="w-4 h-4" />
           </button>
@@ -231,7 +248,7 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
       </div>
 
       {/* Mode Selector Bar */}
-      <div className="px-4 py-2 border-b border-slate-800/60 bg-slate-900/60 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <div className={`px-4 py-2.5 border-b flex items-center gap-2 overflow-x-auto scrollbar-none ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-indigo-100 bg-indigo-50/40'}`}>
         {MODES.map((m) => {
           const Icon = m.icon;
           const isActive = activeMode === m.id;
@@ -239,10 +256,12 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
             <button
               key={m.id}
               onClick={() => handleModeChange(m.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 isActive
-                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                  : 'bg-slate-800/60 text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25 scale-[1.02]'
+                  : isDarkMode
+                  ? 'bg-white/5 text-slate-300 hover:text-white hover:bg-white/10'
+                  : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -254,15 +273,15 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
 
       {/* Settings Overlay Drawer */}
       {showSettings && (
-        <div className="p-4 bg-slate-950 border-b border-slate-800 space-y-3 animate-in fade-in">
-          <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-400">
+        <div className={`p-4 border-b space-y-3 animate-in fade-in ${isDarkMode ? 'bg-slate-900/90 border-white/10 text-white' : 'bg-white border-indigo-100 text-slate-900'}`}>
+          <div className="flex justify-between items-center text-xs font-black uppercase tracking-wider text-slate-400">
             <span>Voice Preferences</span>
-            <button onClick={() => setShowSettings(false)} className="text-cyan-400 text-xs">Done</button>
+            <button onClick={() => setShowSettings(false)} className="text-cyan-500 font-extrabold text-xs cursor-pointer">Done</button>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="text-slate-400 block mb-1">Tone</label>
-              <select value={voiceStyle} onChange={(e) => setVoiceStyle(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white">
+              <label className={`block mb-1 font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Tone</label>
+              <select value={voiceStyle} onChange={(e) => setVoiceStyle(e.target.value)} className={`w-full rounded-xl p-2 font-semibold outline-none ${isDarkMode ? 'bg-slate-800 border border-white/10 text-white' : 'bg-slate-100 border border-slate-200 text-slate-900'}`}>
                 <option>Friendly</option>
                 <option>Calm</option>
                 <option>Professional</option>
@@ -270,24 +289,24 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
               </select>
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Detail</label>
-              <select value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white">
+              <label className={`block mb-1 font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Detail</label>
+              <select value={explanationStyle} onChange={(e) => setExplanationStyle(e.target.value)} className={`w-full rounded-xl p-2 font-semibold outline-none ${isDarkMode ? 'bg-slate-800 border border-white/10 text-white' : 'bg-slate-100 border border-slate-200 text-slate-900'}`}>
                 <option>Normal</option>
                 <option>Simple</option>
                 <option>Detailed</option>
               </select>
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Speed</label>
-              <select value={speakingSpeed} onChange={(e) => setSpeakingSpeed(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white">
+              <label className={`block mb-1 font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Speed</label>
+              <select value={speakingSpeed} onChange={(e) => setSpeakingSpeed(e.target.value)} className={`w-full rounded-xl p-2 font-semibold outline-none ${isDarkMode ? 'bg-slate-800 border border-white/10 text-white' : 'bg-slate-100 border border-slate-200 text-slate-900'}`}>
                 <option>Slow</option>
                 <option>Normal</option>
                 <option>Fast</option>
               </select>
             </div>
             <div>
-              <label className="text-slate-400 block mb-1">Language</label>
-              <select value={speechLanguage} onChange={(e) => setSpeechLanguage(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white">
+              <label className={`block mb-1 font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>Language</label>
+              <select value={speechLanguage} onChange={(e) => setSpeechLanguage(e.target.value)} className={`w-full rounded-xl p-2 font-semibold outline-none ${isDarkMode ? 'bg-slate-800 border border-white/10 text-white' : 'bg-slate-100 border border-slate-200 text-slate-900'}`}>
                 <option value="en-US">English (US)</option>
                 <option value="en-GB">English (UK)</option>
                 <option value="es-ES">Spanish</option>
@@ -299,40 +318,42 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
       )}
 
       {/* Visual Speech Wave & Status Banner */}
-      <div className="p-4 bg-gradient-to-b from-slate-950 to-slate-900 border-b border-slate-800 flex flex-col items-center justify-center min-h-[110px]">
+      <div className={`p-4 border-b flex flex-col items-center justify-center min-h-[110px] ${isDarkMode ? 'bg-gradient-to-b from-indigo-950/40 to-slate-900/60 border-white/10' : 'bg-gradient-to-b from-sky-50 to-indigo-50/50 border-indigo-100'}`}>
         <div className="flex items-center gap-1.5 h-8 mb-2">
-          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-8 bg-cyan-400 animate-bounce' : status === 'LISTENING' ? 'h-6 bg-rose-400 animate-pulse' : 'h-2 bg-slate-700'}`} />
-          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-6 bg-cyan-400 animate-bounce delay-75' : status === 'LISTENING' ? 'h-8 bg-rose-400 animate-pulse' : 'h-2 bg-slate-700'}`} />
-          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-8 bg-cyan-400 animate-bounce delay-150' : status === 'LISTENING' ? 'h-5 bg-rose-400 animate-pulse' : 'h-2 bg-slate-700'}`} />
-          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-5 bg-cyan-400 animate-bounce delay-100' : status === 'LISTENING' ? 'h-7 bg-rose-400 animate-pulse' : 'h-2 bg-slate-700'}`} />
+          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-8 bg-cyan-400 animate-bounce' : status === 'LISTENING' ? 'h-6 bg-rose-500 animate-pulse' : 'h-2 bg-slate-400/40'}`} />
+          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-6 bg-cyan-400 animate-bounce delay-75' : status === 'LISTENING' ? 'h-8 bg-rose-500 animate-pulse' : 'h-2 bg-slate-400/40'}`} />
+          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-8 bg-cyan-400 animate-bounce delay-150' : status === 'LISTENING' ? 'h-5 bg-rose-500 animate-pulse' : 'h-2 bg-slate-400/40'}`} />
+          <div className={`w-1.5 rounded-full transition-all duration-300 ${status === 'AI_SPEAKING' ? 'h-5 bg-cyan-400 animate-bounce delay-100' : status === 'LISTENING' ? 'h-7 bg-rose-500 animate-pulse' : 'h-2 bg-slate-400/40'}`} />
         </div>
 
-        <span className="text-xs font-semibold tracking-wide text-slate-300 flex items-center gap-2">
-          {status === 'AI_SPEAKING' && <span className="text-cyan-400 flex items-center gap-1">Speaking... (Tap mic to interrupt)</span>}
-          {status === 'LISTENING' && <span className="text-rose-400 flex items-center gap-1">Listening to you...</span>}
-          {status === 'PROCESSING' && <span className="text-amber-400 flex items-center gap-1">Thinking...</span>}
-          {status === 'IDLE' && <span className="text-slate-400">Ready — Speak or Type below</span>}
+        <span className="text-xs font-bold tracking-wide flex items-center gap-2">
+          {status === 'AI_SPEAKING' && <span className="text-cyan-400 flex items-center gap-1 font-extrabold">Speaking... (Tap mic to interrupt)</span>}
+          {status === 'LISTENING' && <span className="text-rose-500 flex items-center gap-1 font-extrabold">Listening to you...</span>}
+          {status === 'PROCESSING' && <span className="text-amber-400 flex items-center gap-1 font-extrabold">Thinking...</span>}
+          {status === 'IDLE' && <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>Ready — Speak or Type below</span>}
         </span>
       </div>
 
       {/* Message Transcript View */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-xs">
-            <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-40 text-cyan-400" />
+          <div className={`text-center py-12 text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-60 text-cyan-400 animate-pulse" />
             Start speaking or type a question to begin continuous mentorship.
           </div>
         ) : (
           messages.map((m, idx) => (
             <div key={idx} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
+              <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed font-medium shadow-md ${
                 m.role === 'user'
-                  ? 'bg-cyan-500 text-slate-950 font-medium rounded-br-none'
-                  : 'bg-slate-800 text-slate-100 border border-slate-700/60 rounded-bl-none'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-br-none shadow-cyan-500/20'
+                  : isDarkMode
+                  ? 'bg-slate-800/90 text-slate-100 border border-white/10 rounded-bl-none'
+                  : 'bg-white text-slate-900 border border-indigo-100 rounded-bl-none shadow-sm'
               }`}>
                 {m.content}
               </div>
-              <span className="text-[10px] text-slate-500 mt-1 px-1">
+              <span className={`text-[10px] font-bold mt-1 px-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 {m.role === 'user' ? 'You' : 'Mentor'} • {m.inputType || 'TEXT'}
               </span>
             </div>
@@ -342,16 +363,16 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
       </div>
 
       {/* Controls & Input */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950 space-y-3">
-        <div className="flex items-center gap-2">
+      <div className={`p-4 border-t space-y-3 ${isDarkMode ? 'border-white/10 bg-slate-900/90' : 'border-indigo-100 bg-white'}`}>
+        <div className="flex items-center gap-2.5">
           <button
             onClick={toggleMic}
-            className={`p-3.5 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
+            className={`p-4 rounded-2xl flex items-center justify-center transition-all shadow-xl cursor-pointer ${
               status === 'AI_SPEAKING'
-                ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 animate-pulse'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white animate-pulse'
                 : isListening
-                ? 'bg-rose-500 hover:bg-rose-600 text-white animate-bounce'
-                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white animate-bounce'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:scale-105 active:scale-95 shadow-cyan-500/25'
             }`}
             title={status === 'AI_SPEAKING' ? 'Interrupt AI' : isListening ? 'Stop Listening' : 'Start Voice Input'}
           >
@@ -364,13 +385,21 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleUserSubmit()}
             placeholder="Type your message..."
-            className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+            className={`flex-1 rounded-2xl px-4 py-3.5 text-xs font-semibold outline-none transition-all ${
+              isDarkMode 
+                ? 'bg-slate-800/80 border border-white/10 text-white placeholder-slate-400 focus:border-cyan-400' 
+                : 'bg-slate-100 border border-slate-200 text-slate-900 placeholder-slate-500 focus:border-indigo-500 focus:bg-white'
+            }`}
           />
 
           <button
             onClick={() => handleUserSubmit()}
             disabled={!inputText.trim()}
-            className="p-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 disabled:opacity-40 rounded-2xl transition-colors"
+            className={`p-3.5 rounded-2xl transition-all cursor-pointer ${
+              !inputText.trim() 
+                ? 'opacity-40 bg-slate-200 text-slate-400' 
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md hover:scale-105 active:scale-95'
+            }`}
           >
             <Send className="w-4 h-4" />
           </button>

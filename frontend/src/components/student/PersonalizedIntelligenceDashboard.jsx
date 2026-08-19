@@ -774,50 +774,52 @@ export default function PersonalizedIntelligenceDashboard({ isDarkMode = false, 
 
       {/* VERIFIABLE SKILL PASSPORT & LINKEDIN 1-CLICK SHARE MODAL */}
       {activeModal === 'PASSPORT' && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className={`max-w-xl w-full rounded-3xl border p-6 space-y-6 shadow-2xl ${isDarkMode ? 'bg-[#0B1120] border-cyan-500/30 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+        <div className="fixed inset-0 z-50 bg-indigo-950/40 backdrop-blur-xl flex items-center justify-center p-4 transition-all duration-300">
+          <div className={`max-w-xl w-full rounded-3xl border p-7 space-y-6 shadow-2xl transition-all ${isDarkMode ? 'bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 border-cyan-400/40 text-white shadow-cyan-500/10' : 'bg-gradient-to-b from-white via-slate-50 to-indigo-50/50 border-indigo-200 text-slate-900 shadow-indigo-500/15'}`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
-                  <ShieldCheck className="w-5 h-5" />
+              <div className="flex items-center gap-3">
+                <span className="p-3 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20">
+                  <ShieldCheck className="w-6 h-6" />
                 </span>
                 <div>
-                  <h3 className="text-base font-black">
+                  <h3 className="text-lg font-black tracking-tight">
                     EDOT Verifiable Skill Passport
                   </h3>
-                  <p className="text-[11px] font-semibold text-emerald-400">
+                  <p className="text-xs font-bold text-emerald-500 flex items-center gap-1.5 mt-0.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     Cryptographically signed SHA-256 evidence ledger
                   </p>
                 </div>
               </div>
-              <button onClick={() => setActiveModal(null)} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer">
+              <button onClick={() => setActiveModal(null)} className={`p-2 rounded-xl transition-colors cursor-pointer ${isDarkMode ? 'hover:bg-white/10 text-slate-300 hover:text-white' : 'hover:bg-slate-200 text-slate-500 hover:text-slate-900'}`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Passport Card Preview */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-cyan-950 via-[#070B14] to-slate-950 border border-cyan-500/30 text-white space-y-3 shadow-xl">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-cyan-400 tracking-wider">
-                  HASH: {passportData?.passportHash?.slice(0, 16) || 'edot-sha256-verified'}...
+            {/* Passport Card Preview — Vibrant Electric Gradient (No Black Colors) */}
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-600 via-sky-600 to-emerald-500 border border-white/30 text-white space-y-4 shadow-2xl shadow-indigo-500/25 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-36 h-36 bg-white/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+              <div className="flex items-center justify-between relative z-10">
+                <span className="text-xs font-mono text-cyan-100 tracking-wider font-bold bg-white/15 px-3 py-1 rounded-full border border-white/20 backdrop-blur-md">
+                  HASH: {passportData?.passportHash?.slice(0, 18) || 'edot-sha256-verified'}...
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                <span className="px-3 py-1 rounded-full bg-emerald-400/30 text-white text-[11px] font-black uppercase tracking-wider border border-white/30 backdrop-blur-md shadow-sm">
                   VERIFIED LEDGER
                 </span>
               </div>
-              <div>
-                <h4 className="text-lg font-black">{passportData?.learnerName || 'Kenenisa Beyan'}</h4>
-                <p className="text-xs text-slate-300">Mastery Index: {passportData?.masteryIndex || 88.5}% across {passportData?.verifiedSkillCount || 6} verified skills</p>
+              <div className="relative z-10 pt-1">
+                <h4 className="text-2xl font-black tracking-tight text-white">{passportData?.learnerName || 'Kenenisa Beyan'}</h4>
+                <p className="text-xs text-cyan-100 font-semibold mt-1">Mastery Index: <span className="font-extrabold text-white">{passportData?.masteryIndex || 88.5}%</span> across {passportData?.verifiedSkillCount || 6} verified skills</p>
               </div>
             </div>
 
             {/* 1-Click LinkedIn Share Buttons */}
-            <div className="space-y-2.5">
+            <div className="space-y-3 pt-1">
               <a
                 href={passportData?.shareKit?.linkedIn?.addToProfileUrl || `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=EDOT+Verified+Skill+Passport&organizationName=EDOT+Learning+%26+Growth+Ecosystem`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full p-3.5 rounded-xl bg-[#0A66C2] hover:bg-[#084e96] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#0A66C2] via-blue-600 to-[#0A66C2] hover:opacity-95 text-white font-black text-sm flex items-center justify-center gap-2.5 transition-all shadow-xl shadow-blue-500/25 hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <Share2 className="w-4 h-4" />
                 <span>1-Click Add Passport to LinkedIn Profile</span>
@@ -828,10 +830,10 @@ export default function PersonalizedIntelligenceDashboard({ isDarkMode = false, 
                   navigator.clipboard.writeText(passportData?.shareKit?.embeds?.markdown || `[![EDOT Verified Skill Passport](https://img.shields.io/badge/EDOT_Verified_Skill_Passport-Mastery_88%25-0A66C2)](https://edot.org/verify)`);
                   showToast('📋 Markdown Badge copied to clipboard!');
                 }}
-                className="w-full p-3 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-white/10 transition-colors cursor-pointer"
+                className={`w-full p-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 border transition-all cursor-pointer ${isDarkMode ? 'bg-white/10 hover:bg-white/15 text-white border-white/20' : 'bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border-indigo-200 shadow-sm'}`}
               >
-                <Copy className="w-4 h-4 text-cyan-400" />
-                <span>Copy Embeddable Markdown Badge for GitHub/Resume</span>
+                <Copy className="w-4 h-4 text-cyan-500" />
+                <span>Copy Embeddable Markdown Badge for GitHub / Resume</span>
               </button>
             </div>
           </div>
