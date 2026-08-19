@@ -685,6 +685,7 @@ export default function StudentDashboard() {
   const renderContent = () => {
 
     switch (activeTab) {
+      case 'dashboard':
       case 'overview': {
         const userCertificates = dashboardStats?.certificates || [];
         const claimedCourseIds = userCertificates.map(c => c.courseId);
@@ -980,7 +981,26 @@ export default function StudentDashboard() {
            </div>
         );
       default:
-        return null;
+        return (
+          <div className="space-y-6">
+            <StudentOverview 
+              user={user}
+              enrolledCourses={enrolledCourses}
+              completedCourses={completedCourses}
+              totalEnrolled={totalEnrolled}
+              totalLessonsCompleted={totalLessonsCompleted}
+              averageProgress={averageProgress}
+              isDarkMode={isDarkMode}
+              setActiveTab={setActiveTab}
+              dashboardStats={dashboardStats}
+              certificateSummary={{
+                claimed: certificateEarnedCount,
+                readyToClaim: readyToClaimCount,
+                total: totalCertificateProgress
+              }}
+            />
+          </div>
+        );
     }
   };
 
@@ -1011,7 +1031,6 @@ export default function StudentDashboard() {
     <div className={`min-h-screen flex flex-row font-sans h-screen ${isDarkMode ? 'bg-[#0B1120] text-slate-200' : 'bg-[#FAFAFA] text-slate-700'}`}>
       
 
-
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top Header Bar */}
         <header className={`h-[80px] flex items-center justify-between px-8 shrink-0 z-50 border-b shadow-[0_4px_15px_rgba(0,0,0,0.1)] ${isDarkMode ? 'bg-[#0B1120] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
@@ -1029,17 +1048,21 @@ export default function StudentDashboard() {
                <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#EF4444] rounded-full flex items-center justify-center text-[9px] font-bold text-white border-2 border-white dark:border-slate-800">1</span>
              </div>
 
-             <div className="flex items-center gap-4 cursor-pointer pl-6 border-l dark:border-slate-800 border-slate-200">
+             <div onClick={() => setActiveTab('settings')} className="flex items-center gap-4 cursor-pointer pl-6 border-l dark:border-slate-800 border-slate-200">
                <div className="flex flex-col items-end">
                  <span className={`text-[13px] font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    Test User 
+                    {user?.name || user?.email?.split('@')[0] || 'Learner'} 
                  </span>
-                 <span className={`text-[10px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    student
+                 <span className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-cyan-400' : 'text-indigo-600'}`}>
+                    {user?.position || user?.role || 'student'}
                  </span>
                </div>
-               <div className={`w-10 h-10 rounded-full flex items-center justify-center border-[2.5px] overflow-hidden shadow-sm ${isDarkMode ? 'bg-[#121A2F] border-emerald-500/50 text-emerald-400' : 'bg-white border-[#22C55E] text-[#22C55E]'}`}>
-                 <span className="font-bold text-sm">T</span>
+               <div className={`w-10 h-10 rounded-full flex items-center justify-center border-[2.5px] overflow-hidden shadow-sm ${isDarkMode ? 'bg-[#121A2F] border-cyan-400/50 text-cyan-400' : 'bg-white border-[#22C55E] text-[#22C55E]'}`}>
+                 {user?.avatar && user.avatar !== 'default-avatar.png' ? (
+                   <img src={user.avatar.startsWith('http') ? user.avatar : `http://localhost:5000${user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                 ) : (
+                   <span className="font-bold text-sm">{(user?.name || user?.email || 'L').charAt(0).toUpperCase()}</span>
+                 )}
                </div>
              </div>
            </div>
