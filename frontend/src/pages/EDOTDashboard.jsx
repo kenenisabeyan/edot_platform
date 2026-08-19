@@ -593,23 +593,8 @@ export default function EDOTDashboard() {
   }
 
   const dashboardAction = (tab) => {
-    if (tab === 'certificates') {
-      navigate('/dashboard/certificates');
-      return;
-    }
-    if (tab === 'courses' || tab === 'catalog') {
-      navigate('/dashboard/courses');
-      return;
-    }
-    if (tab === 'schedule' || tab === 'study-goal') {
-      navigate('/dashboard/study-goal');
-      return;
-    }
-    if (tab === 'overview') {
-      navigate('/dashboard');
-      return;
-    }
-    navigate('/dashboard');
+    if (!tab) return;
+    navigate(`/dashboard?tab=${tab}`, { replace: true });
   };
 
   if (userRole === 'student') {
