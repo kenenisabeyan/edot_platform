@@ -2,6 +2,16 @@
  * voiceRoutes.js
  * 
  * Express routes for EDOT Continuous AI Voice Mentor.
+ * 
+ * Endpoints:
+ *   POST /session/start          — Start a new voice learning session
+ *   POST /session/:id/mode       — Switch conversation mode
+ *   POST /interact               — Process voice/text interaction (request-response)
+ *   POST /interact/stream        — Process voice/text interaction (SSE streaming)
+ *   POST /cancel                 — Cancel active AI response (barge-in)
+ *   POST /session/:id/end        — End a voice learning session
+ *   GET  /session/:id/resume     — Resume session with rolling memory
+ *   GET  /sessions               — List user's voice learning sessions
  */
 
 import express from 'express';
@@ -15,7 +25,9 @@ const router = express.Router();
 router.use(protect);
 router.use(checkNotBlocked);
 
+// ──────────────────────────────────────────────
 // Start or resume a Voice Learning Session
+// ──────────────────────────────────────────────
 router.post('/session/start', async (req, res) => {
   try {
     const userId = req.user.id;
@@ -40,7 +52,9 @@ router.post('/session/start', async (req, res) => {
   }
 });
 
-// Switch active conversation mode (EXPLAIN, SOCRATIC, PRACTICE, QUIZ, STUDY, etc.)
+// ──────────────────────────────────────────────
+// Switch active conversation mode
+// ──────────────────────────────────────────────
 router.post('/session/:id/mode', async (req, res) => {
   try {
     const { id } = req.params;
@@ -60,23 +74,16 @@ router.post('/session/:id/mode', async (req, res) => {
   }
 });
 
-// Process voice/text interaction turn
+// ──────────────────────────────────────────────
+// Process voice/text interaction (request-response)
+// ──────────────────────────────────────────────
 router.post('/interact', async (req, res) => {
   try {
     const userId = req.user.id;
     const {
-      sessionId,
-      conversationId,
-      transcript,
-      audioBase64,
-      inputType,
-      courseId,
-      lessonId,
-      mode,
-      voiceStyle,
-      explanationStyle,
-      speakingSpeed,
-      speechLanguage
+      sessionId, conversationId, transcript, audioBase64,
+      inputType, courseId, sectionId, lessonId, mode,
+      voiceStyle, explanationStyle, speakingSpeed, speechLanguage
     } = req.body;
 
     const result = await VoiceOrchestrator.processInteraction({
@@ -87,6 +94,7 @@ router.post('/interact', async (req, res) => {
       audioBase64,
       inputType,
       courseId,
+      sectionId,
       lessonId,
       mode,
       voiceStyle,
@@ -102,7 +110,54 @@ router.post('/interact', async (req, res) => {
   }
 });
 
+// ──────────────────────────────────────────────
+// Process voice/text interaction (SSE streaming)
+//
+// Client receives events:
+//   status        — Pipeline stage updates
+//   transcript    — Transcribed text from speech
+//   context       — Loaded context summary
+//   speech_chunk  — Individual TTS sentence chunks
+//   complete      — Full response with all data
+//   error         — Error event
+// ──────────────────────────────────────────────
+router.post('/interact/stream', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      sessionId, conversationId, transcript, audioBase64,
+      inputType, courseId, sectionId, lessonId, mode,
+      voiceStyle, explanationStyle, speakingSpeed, speechLanguage
+    } = req.body;
+
+    await VoiceOrchestrator.processInteractionStreaming({
+      res,
+      userId,
+      sessionId,
+      conversationId,
+      transcript,
+      audioBase64,
+      inputType,
+      courseId,
+      sectionId,
+      lessonId,
+      mode,
+      voiceStyle,
+      explanationStyle,
+      speakingSpeed,
+      speechLanguage
+    });
+  } catch (error) {
+    console.error('Voice Streaming Error:', error);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, message: 'Failed to process streaming voice interaction' });
+    }
+  }
+});
+
+// ──────────────────────────────────────────────
 // Cancel active AI response (barge-in / speech interruption)
+// ──────────────────────────────────────────────
 router.post('/cancel', async (req, res) => {
   try {
     const { sessionId, responseId } = req.body;
@@ -113,7 +168,24 @@ router.post('/cancel', async (req, res) => {
   }
 });
 
+// ──────────────────────────────────────────────
+// End a voice learning session
+// ──────────────────────────────────────────────
+router.post('/session/:id/end', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const result = await VoiceOrchestrator.endSession({ sessionId: id, userId });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Voice Session End Error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to end voice session' });
+  }
+});
+
+// ──────────────────────────────────────────────
 // Resume session with full rolling memory summary
+// ──────────────────────────────────────────────
 router.get('/session/:id/resume', async (req, res) => {
   try {
     const { id } = req.params;
@@ -139,6 +211,30 @@ router.get('/session/:id/resume', async (req, res) => {
   } catch (error) {
     console.error('Voice Session Resume Error:', error);
     return res.status(500).json({ success: false, message: 'Failed to resume voice session' });
+  }
+});
+
+// ──────────────────────────────────────────────
+// List user's voice learning sessions
+// ──────────────────────────────────────────────
+router.get('/sessions', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { courseId, limit = 10 } = req.query;
+
+    const where = { learnerId: userId };
+    if (courseId) where.courseId = courseId;
+
+    const sessions = await prisma.voiceLearningSession.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit)
+    });
+
+    return res.json({ success: true, data: sessions });
+  } catch (error) {
+    console.error('Voice Sessions List Error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to list voice sessions' });
   }
 });
 
