@@ -22,6 +22,9 @@ import {
   MessageSquare,
   Mic
 } from 'lucide-react';
+import api from '../utils/api.js';
+import ContinuousVoiceMentorDrawer from './ContinuousVoiceMentorDrawer.jsx';
+
 // Persistent in-memory cache so AI conversation NEVER rolls back on re-renders
 let persistentTextMessages = [
   {
