@@ -77,7 +77,14 @@ export class VoiceOrchestrator {
       }
     });
 
-    // 3. Ingest session start event (non-blocking)
+    // 3. Generate evidence-based resumption context if resuming
+    const resumptionInfo = await ContextCompressor.generateResumptionContext(
+      conversation.id,
+      courseId ? (await prisma.course.findUnique({ where: { id: courseId }, select: { title: true } }))?.title : null,
+      lessonId ? (await prisma.lesson.findUnique({ where: { id: lessonId }, select: { title: true } }))?.title : null
+    );
+
+    // 4. Ingest session start event (non-blocking)
     publishLearningEvent({
       userId,
       eventType: 'VOICE_SESSION_STARTED',
@@ -88,7 +95,42 @@ export class VoiceOrchestrator {
 
     return {
       session,
-      conversationId: conversation.id
+      conversationId: conversation.id,
+      resumptionInfo
+    };
+  }
+
+  /**
+   * Resume an existing voice session with evidence-based continuity.
+   */
+  static async resumeSession({ sessionId, userId }) {
+    const session = await prisma.voiceLearningSession.findUnique({
+      where: { id: sessionId }
+    });
+
+    if (!session || session.learnerId !== userId) {
+      return null;
+    }
+
+    const [course, lesson] = await Promise.all([
+      session.courseId ? prisma.course.findUnique({ where: { id: session.courseId }, select: { title: true } }) : null,
+      session.lessonId ? prisma.lesson.findUnique({ where: { id: session.lessonId }, select: { title: true } }) : null
+    ]);
+
+    const resumptionInfo = await ContextCompressor.generateResumptionContext(
+      session.conversationId,
+      course?.title,
+      lesson?.title
+    );
+
+    await prisma.voiceLearningSession.update({
+      where: { id: sessionId },
+      data: { status: 'ACTIVE', lastActivityAt: new Date() }
+    }).catch(() => {});
+
+    return {
+      session,
+      resumptionInfo
     };
   }
 

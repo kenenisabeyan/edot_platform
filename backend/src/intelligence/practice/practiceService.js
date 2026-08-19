@@ -137,15 +137,14 @@ export async function evaluatePracticeSession(userId, sessionId, answers = []) {
           userId_topic: { userId, topic }
         },
         update: {
-          description: `Struggled in practice session (${evaluation.scorePercent}% score)`,
-          detectedAt: new Date()
+          severity: evaluation.scorePercent < 40 ? 'HIGH' : 'MEDIUM',
+          lastObservedAt: new Date()
         },
         create: {
           userId,
           topic,
-          description: `Detected via AI practice session (${evaluation.scorePercent}% score)`,
-          severity: evaluation.scorePercent < 40 ? 'HIGH' : 'MEDIUM',
-          courseId: session.courseId
+          category: session.skillName || 'General',
+          severity: evaluation.scorePercent < 40 ? 'HIGH' : 'MEDIUM'
         }
       }).catch(() => {});
     }

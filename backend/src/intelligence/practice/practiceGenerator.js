@@ -122,7 +122,7 @@ async function fetchPracticeContext({ userId, courseId, lessonId, skillName }) {
     queries.push(prisma.learnerWeakness.findMany({
       where: { OR: [{ userId }, { profile: { userId } }] },
       take: 5,
-      select: { topic: true, description: true }
+      select: { topic: true, category: true, severity: true }
     }));
   } else {
     queries.push(Promise.resolve([]));

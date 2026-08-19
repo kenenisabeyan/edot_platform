@@ -14,7 +14,7 @@ async function runAIPracticeTestSuite() {
   try {
     // 1. Generator Unit Test: Practice Types & Quality Check
     console.log('--- 1. Testing AI Practice Question Generator ---');
-    const questions = generatePracticeQuestions({
+    const questions = await generatePracticeQuestions({
       skillName: 'CSS Flexbox',
       practiceType: 'PROBLEM_SOLVING',
       difficulty: 'INTERMEDIATE'
@@ -47,7 +47,7 @@ async function runAIPracticeTestSuite() {
     console.log(`Created Practice Session [ID: ${session.sessionId}], Skill: ${session.skillName}`);
 
     // Submit answers (1 correct, 1 incorrect)
-    const evalResult = await evaluatePracticeSession(session.sessionId, [1, 0]);
+    const evalResult = await evaluatePracticeSession(testUser.id, session.sessionId, [1, 0]);
     console.log('Adaptive Evaluation Output:', JSON.stringify(evalResult, null, 2));
 
     if (evalResult.sessionId && evalResult.adaptiveAdjustment && evalResult.isOfficialAssessment === false) {

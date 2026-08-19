@@ -188,6 +188,18 @@ async function runVoiceMentorTests() {
   console.assert(cancelResult.status === 'LISTENING', 'State must reset to LISTENING upon barge-in');
   console.log('✅ Requirement 6 PASSED\n');
 
+  // --- Requirement 7: Session Resumption & Evidence-Based Continuity ---
+  console.log('--- Requirement 7: Session Resumption & Evidence-Based Continuity ---');
+  const resumeResult = await VoiceOrchestrator.resumeSession({
+    sessionId: session2.session.id,
+    userId: student.id
+  });
+
+  console.log(`  Resumption Greeting: "${resumeResult.resumptionInfo.greeting}"`);
+  console.assert(resumeResult.resumptionInfo.hasHistory === true, 'Resumption info must report history');
+  console.assert(resumeResult.resumptionInfo.greeting.includes('Welcome back'), 'Greeting must welcome learner back based on stored evidence');
+  console.log('✅ Requirement 7 PASSED\n');
+
   // Clean up test entities
   await prisma.voiceLearningSession.deleteMany({ where: { OR: [{ learnerId: newStudent.id }, { courseId: newCourse.id }] } });
   await prisma.userCourseProgress.deleteMany({ where: { courseId: newCourse.id } });
