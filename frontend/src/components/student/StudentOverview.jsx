@@ -119,20 +119,23 @@ const StudentOverview = ({
   const allRecentContacts = recentContactsData || [];
   const recentContacts = allRecentContacts.slice(0, 4);
 
-  const totalWeeklyHours = weeklyStudyData.reduce((acc, curr) => acc + curr.hours, 0).toFixed(1);
+  const safeWeeklyData = Array.isArray(weeklyStudyData) ? weeklyStudyData : [];
+  const totalWeeklyHours = safeWeeklyData.reduce((acc, curr) => acc + (curr?.hours || 0), 0).toFixed(1);
 
-  const certificateEarned = certificateSummary.claimed || 0;
-  const certificateReady = certificateSummary.readyToClaim || 0;
-  const certificateTotal = certificateSummary.total || 0;
+  const certificateEarned = certificateSummary?.claimed || 0;
+  const certificateReady = certificateSummary?.readyToClaim || 0;
+  const certificateTotal = certificateSummary?.total || 0;
   const certificateSubtitle = certificateTotal === 0
     ? (certificateReady > 0 ? `0 earned • ${certificateReady} ready` : 'No certificates yet')
     : certificateReady > 0
       ? `${certificateEarned} earned • ${certificateReady} ready`
       : `${certificateEarned} earned`;
 
-  const claimedCertificates = dashboardStats?.certificates || [];
-  const claimedCourseIds = new Set(claimedCertificates.map(cert => cert.courseId));
-  const readyCertificates = completedCourses.filter(course => {
+  const claimedCertificates = Array.isArray(dashboardStats?.certificates) ? dashboardStats.certificates : [];
+  const claimedCourseIds = new Set(claimedCertificates.map(cert => cert?.courseId || cert?.id));
+  const safeCompletedCourses = Array.isArray(completedCourses) ? completedCourses : [];
+  const readyCertificates = safeCompletedCourses.filter(course => {
+    if (!course) return false;
     const courseId = course.course?.id || course.courseId;
     const isPassed = !course.course?.isExamRequired || course.passedFinalExam;
     return !claimedCourseIds.has(courseId) && isPassed;

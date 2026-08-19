@@ -717,12 +717,6 @@ export default function StudentDashboard() {
                 total: totalCertificateProgress
               }}
             />
-            <div className="space-y-6">
-              <IntelligencePanel isDarkMode={isDarkMode} />
-              <IntelligentLearningAnalytics enrolledCourses={enrolledCourses} dashboardStats={dashboardStats} isDarkMode={isDarkMode} />
-              <RecommendationEnginePanel isDarkMode={isDarkMode} />
-              <LearningProfileCard />
-            </div>
           </div>
         );
       }
