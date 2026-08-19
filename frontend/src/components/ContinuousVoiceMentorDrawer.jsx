@@ -17,11 +17,22 @@ const MODES = [
   { id: 'MOTIVATION', label: 'Motivation Mode', icon: Sparkles, desc: 'Supportive learning encouragement' }
 ];
 
+// Persistent in-memory cache for continuous voice/chat messages across re-renders
+let persistentVoiceMessages = [];
+
 export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = () => {}, courseId = null, lessonId = null, isDarkMode = true }) {
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState('IDLE'); // IDLE, LISTENING, PROCESSING, AI_SPEAKING, PAUSED
   const [activeMode, setActiveMode] = useState('EXPLAIN');
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessagesState] = useState(persistentVoiceMessages);
+
+  const setMessages = (updater) => {
+    setMessagesState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistentVoiceMessages = next;
+      return next;
+    });
+  };
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [activeResponseId, setActiveResponseId] = useState(null);

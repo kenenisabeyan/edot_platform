@@ -22,8 +22,19 @@ import {
   MessageSquare,
   Mic
 } from 'lucide-react';
-import api from '../utils/api.js';
-import ContinuousVoiceMentorDrawer from './ContinuousVoiceMentorDrawer.jsx';
+// Persistent in-memory cache so AI conversation NEVER rolls back on re-renders
+let persistentTextMessages = [
+  {
+    id: 'welcome-1',
+    sender: 'mentor',
+    answer: 'Hello! I am your EDOT AI Academic Mentor. I am grounded directly in your course materials. How can I help you master today\'s concepts?',
+    sources: ['EDOT Intelligence Core'],
+    suggestedNextActions: ['Explain current lesson concepts', 'Review weak study topics', 'Generate practice questions'],
+    confidence: 0.98,
+    needsHumanSupport: false,
+    timestamp: new Date()
+  }
+];
 
 export default function ContextualMentorDrawer({ 
   isDarkMode = false, 
@@ -41,18 +52,15 @@ export default function ContextualMentorDrawer({
   };
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      id: 'welcome-1',
-      sender: 'mentor',
-      answer: 'Hello! I am your EDOT AI Academic Mentor. I am grounded directly in your course materials. How can I help you master today\'s concepts?',
-      sources: ['EDOT Intelligence Core'],
-      suggestedNextActions: ['Explain current lesson concepts', 'Review weak study topics', 'Generate practice questions'],
-      confidence: 0.98,
-      needsHumanSupport: false,
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessagesState] = useState(persistentTextMessages);
+  
+  const setMessages = (updater) => {
+    setMessagesState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistentTextMessages = next;
+      return next;
+    });
+  };
   const [loading, setLoading] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState({});
   const messagesEndRef = useRef(null);
