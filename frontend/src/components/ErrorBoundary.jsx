@@ -13,24 +13,10 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({ errorInfo });
-
-    // Detect dynamic import chunk load failures (common on new Vercel deployments)
-    const errString = error ? error.toString() : '';
-    if (
-      errString.includes('Failed to fetch dynamically imported module') ||
-      errString.includes('Importing a module script failed') ||
-      errString.includes('ChunkLoadError')
-    ) {
-      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
-      if (!reloaded) {
-        sessionStorage.setItem('chunk_reload_attempted', 'true');
-        window.location.reload();
-      }
-    }
+    // NEVER call window.location.reload() automatically to prevent unexpected page reloads while user is active
   }
 
   handleReload = () => {
-    sessionStorage.removeItem('chunk_reload_attempted');
     window.location.reload();
   };
 
@@ -55,7 +41,7 @@ export default class ErrorBoundary extends React.Component {
                   New Application Version Available
                 </h2>
                 <p className="text-sm text-slate-300 font-medium leading-relaxed">
-                  EDOT Platform has just been updated with new features! Please refresh to load the latest verified bundle.
+                  EDOT Platform has just been updated with new features! Please click below to refresh and load the latest bundle when you are ready.
                 </p>
                 <button
                   onClick={this.handleReload}

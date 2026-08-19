@@ -22,21 +22,18 @@ import { useAuth } from './context/AuthContext';
 
 import EDOTLayout from './components/EDOTLayout';
 
-// Smart Lazy loader helper with automatic retry & reload for dynamic chunk load failures on new Vercel deployments
+// Smart Lazy loader helper with silent in-memory retry for dynamic chunk loads
 function lazyWithRetry(componentImport) {
   return lazy(async () => {
     try {
-      const component = await componentImport();
-      sessionStorage.removeItem('chunk_reload_attempted');
-      return component;
+      return await componentImport();
     } catch (error) {
-      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
-      if (!reloaded) {
-        sessionStorage.setItem('chunk_reload_attempted', 'true');
-        window.location.reload();
-        return new Promise(() => {});
+      try {
+        return await componentImport();
+      } catch (retryErr) {
+        console.error('Failed to load dynamic component bundle:', retryErr);
+        throw retryErr;
       }
-      throw error;
     }
   });
 }
