@@ -19,12 +19,15 @@ import {
   BookOpen, 
   CheckCircle2, 
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Mic
 } from 'lucide-react';
 import api from '../utils/api.js';
+import ContinuousVoiceMentorDrawer from './ContinuousVoiceMentorDrawer.jsx';
 
 export default function ContextualMentorDrawer({ isDarkMode = false, currentCourseId = null, currentLessonId = null }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [messages, setMessages] = useState([
     {
@@ -143,30 +146,37 @@ export default function ContextualMentorDrawer({ isDarkMode = false, currentCour
       {isOpen && (
         <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[460px] flex flex-col shadow-2xl transition-all duration-300 animate-in slide-in-from-right">
           {/* Drawer Header */}
-          <div className={`p-5 flex items-center justify-between border-b ${isDarkMode ? 'bg-[#0B1120] text-white border-white/10' : 'bg-white text-slate-900 border-slate-200'}`}>
+          <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'bg-[#05070A] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <Bot className="w-5 h-5" />
+              <div className="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <Sparkles className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-base">EDOT AI Mentor</h3>
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wider">
-                    Context-Aware
-                  </span>
-                </div>
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Grounded in your current syllabus & skill graph
+                <h3 className={`font-black text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  EDOT AI Mentor
+                </h3>
+                <p className="text-[11px] font-semibold text-cyan-400">
+                  Continuous Voice & Text Learning Assistant
                 </p>
               </div>
             </div>
 
-            <button
-              onClick={() => setIsOpen(false)}
-              className={`p-2 rounded-xl border transition-colors ${isDarkMode ? 'border-white/10 hover:bg-white/5 text-slate-400' : 'border-slate-200 hover:bg-slate-100 text-slate-600'}`}
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsVoiceOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md"
+                title="Launch Continuous AI Voice Mentor"
+              >
+                <Mic className="w-3.5 h-3.5" />
+                Voice Mode
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-200 hover:text-slate-800'}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}
@@ -290,6 +300,15 @@ export default function ContextualMentorDrawer({ isDarkMode = false, currentCour
           </form>
         </div>
       )}
+
+      {/* Continuous AI Voice Mentor Component */}
+      <ContinuousVoiceMentorDrawer
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+        courseId={currentCourseId}
+        lessonId={currentLessonId}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 }

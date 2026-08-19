@@ -56,6 +56,7 @@ model User {
   certificates         Certificate[]
   achievements         Achievement?
   activities           Activity[]
+  voiceLearningSessions VoiceLearningSession[]
   courseReports        CourseReport[]       @relation("CourseReportInstructor")
   courseReportRecords  CourseReportRecord[] @relation("CourseReportStudent")
   eventsCreated        Event[]              @relation("EventCreator")
@@ -340,7 +341,68 @@ model MentorMessage {
   conversation      MentorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role              String
   content           String
+  inputType         String   @default("TEXT") // TEXT, VOICE
+  outputType        String   @default("TEXT") // TEXT, VOICE
+  courseId          String?
+  sectionId         String?
+  lessonId          String?
+  responseId        String?
   createdAt         DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([responseId])
+}
+
+model VoiceLearningSession {
+  id                    String   @id @default(uuid())
+  learnerId             String
+  user                  User     @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  conversationId        String?
+  courseId              String?
+  sectionId             String?
+  lessonId              String?
+  mode                  String   @default("EXPLAIN") // EXPLAIN, SOCRATIC, PRACTICE, QUIZ, STUDY, EXAM_PREPARATION, PROJECT_COACH, DEBUG_UNDERSTANDING, MOTIVATION
+  status                String   @default("INITIALIZING") // INITIALIZING, ACTIVE, PROCESSING, AI_SPEAKING, LEARNER_SPEAKING, PAUSED, ENDED, FAILED
+  voiceStyle            String   @default("Friendly")
+  explanationStyle      String   @default("Normal")
+  speakingSpeed         String   @default("Normal")
+  speechLanguage        String   @default("en-US")
+  totalSpeakingDuration Int      @default(0) // seconds
+  totalListeningDuration Int     @default(0) // seconds
+  startedAt             DateTime @default(now())
+  lastActivityAt        DateTime @default(now())
+  endedAt               DateTime?
+
+  @@index([learnerId])
+  @@index([conversationId])
+  @@index([status])
+}
+
+model ConversationSummary {
+  id                  String   @id @default(uuid())
+  conversationId      String
+  summaryText         String
+  keyTakeaways        Json?
+  unresolvedQuestions Json?
+  turnRangeStart      Int      @default(0)
+  turnRangeEnd        Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model ConversationLearningState {
+  id                        String   @id @default(uuid())
+  conversationId            String   @unique
+  currentTopic              String?
+  currentConcept            String?
+  currentSkill              String?
+  learnerUnderstandingLevel String   @default("developing") // beginner, developing, proficient, advanced
+  detectedMisconceptions   Json?
+  unresolvedQuestions       Json?
+  currentLearningGoal       String?
+  recommendedNextAction     String?
+  updatedAt                 DateTime @updatedAt
 
   @@index([conversationId])
 }
