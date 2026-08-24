@@ -52,6 +52,21 @@ import {
   getInstructorsNeedingSupport,
   getInstitutionalRecommendations
 } from '../src/intelligence/admin/adminIntelligenceService.js';
+import {
+  getGuardianLinkedStudents,
+  getGuardianStudentOverview,
+  getGuardianCourseProgress,
+  getGuardianImportantChanges,
+  getGuardianRecommendations,
+  getGuardianNotifications,
+  sendEncouragement,
+  requestSupport
+} from '../src/intelligence/guardian/guardianIntelligenceService.js';
+import {
+  evaluateClosedLoopEcosystem,
+  adaptCurriculumSequencing,
+  getEcosystemSummary
+} from '../src/intelligence/adaptive/closedLoopAdaptationEngine.js';
 
 const router = express.Router();
 
@@ -905,6 +920,185 @@ router.get('/admin/institutional-recommendations', protect, authorize('admin'), 
     return res.json({ success: true, data: recommendations });
   } catch (error) {
     console.error('Admin institutional recommendations error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 6: Guardian / Parent Intelligence APIs ───────────────────────────────
+
+/**
+ * GET /api/intelligence/guardian/students
+ * Retrieves authorized active linked students for a guardian.
+ */
+router.get('/guardian/students', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const students = await getGuardianLinkedStudents(req.user.id);
+    return res.json({ success: true, data: students });
+  } catch (error) {
+    console.error('Guardian linked students error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/guardian/students/:studentId/overview
+ * Computes supportive intelligence overview for a target linked student.
+ */
+router.get('/guardian/students/:studentId/overview', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const overview = await getGuardianStudentOverview(req.user.id, req.params.studentId);
+    return res.json({ success: true, data: overview });
+  } catch (error) {
+    console.error('Guardian student overview error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/guardian/students/:studentId/courses
+ * Retrieves per-course progress details for a target linked student.
+ */
+router.get('/guardian/students/:studentId/courses', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const progress = await getGuardianCourseProgress(req.user.id, req.params.studentId);
+    return res.json({ success: true, data: progress });
+  } catch (error) {
+    console.error('Guardian course progress error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/guardian/students/:studentId/changes
+ * Surfaces key milestones or engagement shifts for a linked student.
+ */
+router.get('/guardian/students/:studentId/changes', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const changes = await getGuardianImportantChanges(req.user.id, req.params.studentId);
+    return res.json({ success: true, data: changes });
+  } catch (error) {
+    console.error('Guardian important changes error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/guardian/students/:studentId/recommendations
+ * Returns supportive, non-judgmental recommendations for guardians.
+ */
+router.get('/guardian/students/:studentId/recommendations', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const recommendations = await getGuardianRecommendations(req.user.id, req.params.studentId);
+    return res.json({ success: true, data: recommendations });
+  } catch (error) {
+    console.error('Guardian recommendations error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/guardian/notifications
+ * Retrieves deduplicated notifications for a guardian.
+ */
+router.get('/guardian/notifications', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || null;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const notifications = await getGuardianNotifications(req.user.id, { studentId, limit });
+    return res.json({ success: true, data: notifications });
+  } catch (error) {
+    console.error('Guardian notifications error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/guardian/students/:studentId/encourage
+ * Sends a supportive encouragement message to a linked student.
+ */
+router.post('/guardian/students/:studentId/encourage', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const result = await sendEncouragement(req.user.id, req.params.studentId, req.body.message);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Send encouragement error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/guardian/students/:studentId/request-support
+ * Submits a learning support request from guardian to course faculty.
+ */
+router.post('/guardian/students/:studentId/request-support', protect, authorize('parent', 'guardian', 'admin', 'student'), checkNotBlocked, async (req, res) => {
+  try {
+    const result = await requestSupport(req.user.id, {
+      studentId: req.params.studentId,
+      courseId: req.body.courseId,
+      reason: req.body.reason
+    });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Request support error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 7: Closed-Loop Ecosystem APIs ───────────────────────────────────────
+
+/**
+ * GET /api/intelligence/ecosystem/summary
+ * Computes platform-wide 4-stage closed-loop ecosystem metrics: DETECT -> SUPPORT -> MONITOR -> ADAPT.
+ */
+router.get('/ecosystem/summary', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const summary = await getEcosystemSummary();
+    return res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('Ecosystem summary error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/ecosystem/closed-loop-outcomes
+ * Evaluates active role-based interventions and measures subsequent learning telemetry.
+ */
+router.get('/ecosystem/closed-loop-outcomes', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const outcomes = await evaluateClosedLoopEcosystem();
+    return res.json({ success: true, data: outcomes });
+  } catch (error) {
+    console.error('Closed-loop outcomes error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/ecosystem/trigger-adaptation
+ * Triggers closed-loop outcome evaluation and adaptive curriculum sequencing.
+ */
+router.post('/ecosystem/trigger-adaptation', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const outcomes = await evaluateClosedLoopEcosystem();
+    let adaptedSequence = null;
+    if (req.body.studentId && req.body.courseId) {
+      adaptedSequence = await adaptCurriculumSequencing(req.body.studentId, req.body.courseId);
+    }
+    return res.json({ success: true, data: { outcomes, adaptedSequence } });
+  } catch (error) {
+    console.error('Trigger adaptation error:', error);
     const status = error.statusCode || 500;
     return res.status(status).json({ success: false, message: error.message });
   }

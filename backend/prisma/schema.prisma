@@ -130,6 +130,9 @@ model User {
   portfolioItems       PortfolioItem[]       @relation("UserPortfolioItems")
   intelligenceFeedbacks IntelligenceFeedback[] @relation("UserIntelligenceFeedbacks")
   instructorInterventions InstructorIntervention[] @relation("UserInstructorInterventions")
+  guardianLinks        GuardianStudent[]     @relation("GuardianStudentGuardian")
+  studentLinks         GuardianStudent[]     @relation("GuardianStudentStudent")
+  guardianNotifications GuardianNotification[] @relation("UserGuardianNotifications")
 }
 
 model LearnerProfile {
@@ -2094,5 +2097,41 @@ model InstructorIntervention {
   @@index([instructorId])
   @@index([courseId])
   @@index([studentId])
+  @@index([status])
+}
+
+model GuardianStudent {
+  id               String   @id @default(uuid())
+  guardianId       String
+  guardian         User     @relation("GuardianStudentGuardian", fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          User     @relation("GuardianStudentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  relationshipType String   @default("PARENT") // PARENT | GUARDIAN | SPONSOR | OTHER_AUTHORIZED_SUPPORTER
+  status           String   @default("ACTIVE") // ACTIVE | PENDING | REVOKED | BLOCKED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([guardianId, studentId])
+  @@index([guardianId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model GuardianNotification {
+  id          String    @id @default(uuid())
+  guardianId  String
+  guardian    User      @relation("UserGuardianNotifications", fields: [guardianId], references: [id], onDelete: Cascade)
+  studentId   String
+  type        String    // COURSE_COMPLETED | MAJOR_PROGRESS_MILESTONE | PROLONGED_INACTIVITY | SUPPORT_RECOMMENDED | ACTIVITY_RESUMED | IMPORTANT_STATUS_CHANGE
+  priority    String    @default("MEDIUM") // LOW | MEDIUM | HIGH
+  title       String
+  message     String
+  status      String    @default("UNREAD") // UNREAD | READ
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+
+  @@index([guardianId])
+  @@index([studentId])
+  @@index([type])
   @@index([status])
 }
