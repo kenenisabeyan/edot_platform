@@ -26,6 +26,8 @@ import { resolveNextBestAction } from '../src/intelligence/recommendations/nextB
 import { detectAndRegisterMisconceptions } from '../src/intelligence/understanding/misconceptionEngine.js';
 import { generateAdaptiveSequence } from '../src/intelligence/adaptive/adaptiveSequencer.js';
 import { syncLearnerProfile } from '../src/intelligence/profile/profileService.js';
+import { getLivePulseFeed, evaluateLearnerFatigue } from '../src/intelligence/monitoring/learningPulseEngine.js';
+import { triggerIntelligentNudges, dismissNudge } from '../src/intelligence/nudges/intelligentNudgeEngine.js';
 
 const router = express.Router();
 
@@ -535,6 +537,66 @@ router.get('/adaptive-path/me', protect, checkNotBlocked, async (req, res) => {
     return res.json({ success: true, data: adaptivePath });
   } catch (error) {
     console.error('Adaptive path error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 3: EDOT Learning Pulse APIs ───────────────────────────────────────
+
+/**
+ * GET /api/intelligence/pulse/live-activity
+ * Retrieves real-time anonymous telemetry stream across active learning sessions.
+ */
+router.get('/pulse/live-activity', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const courseId = req.query.courseId || null;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const feed = await getLivePulseFeed({ courseId, limit });
+    return res.json({ success: true, data: feed });
+  } catch (error) {
+    console.error('Live pulse feed error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/pulse/fatigue-check/me
+ * Evaluates learner study session duration and fatigue level.
+ */
+router.get('/pulse/fatigue-check/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const fatigue = await evaluateLearnerFatigue(req.user.id);
+    return res.json({ success: true, data: fatigue });
+  } catch (error) {
+    console.error('Fatigue check error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/pulse/nudges/me
+ * Retrieves personalized active nudges with anti-fatigue max 2/day enforcement.
+ */
+router.get('/pulse/nudges/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const nudges = await triggerIntelligentNudges(req.user.id);
+    return res.json({ success: true, data: nudges });
+  } catch (error) {
+    console.error('Intelligent nudges error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/pulse/nudges/:nudgeId/dismiss
+ * Dismisses an active nudge and updates anti-fatigue tracking.
+ */
+router.post('/pulse/nudges/:nudgeId/dismiss', protect, checkNotBlocked, async (req, res) => {
+  try {
+    await dismissNudge(req.user.id, req.params.nudgeId);
+    return res.json({ success: true, message: 'Nudge dismissed successfully' });
+  } catch (error) {
+    console.error('Dismiss nudge error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 });

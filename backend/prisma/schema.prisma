@@ -123,11 +123,11 @@ model User {
   practiceSessions     AIPracticeSession[]   @relation("UserPracticeSessions")
   assessmentInsights   AssessmentInsight[]   @relation("UserAssessmentInsights")
   instructorInsights   InstructorInsight[]   @relation("InstructorInsights")
+  intelligentNudges    IntelligentNudge[]    @relation("UserIntelligentNudges")
   humanSupportTickets  HumanSupportTicket[]  @relation("UserHumanSupportTickets")
   learningRoadmaps     LearningRoadmap[]     @relation("UserLearningRoadmaps")
   projectSubmissions   ProjectSubmission[]   @relation("UserProjectSubmissions")
   portfolioItems       PortfolioItem[]       @relation("UserPortfolioItems")
-  intelligentNudges    IntelligentNudge[]    @relation("UserIntelligentNudges")
   intelligenceFeedbacks IntelligenceFeedback[] @relation("UserIntelligenceFeedbacks")
 }
 
