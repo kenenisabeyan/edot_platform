@@ -184,6 +184,18 @@ export const submitAttendance = async (req, res) => {
       }
     });
 
+    // Fire-and-forget: publish ATTENDANCE_MARKED events asynchronously
+    formattedRecords.forEach(r => {
+      if (r.user) {
+        publishLearningEvent({
+          userId: r.user,
+          eventType: 'ATTENDANCE_MARKED',
+          courseId,
+          metadata: { status: r.status, section, date: startOfDay }
+        }).catch(() => {});
+      }
+    });
+
     res.status(200).json({ success: true, data: attendance });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

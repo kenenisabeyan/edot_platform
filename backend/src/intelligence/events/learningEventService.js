@@ -13,6 +13,17 @@ import { ValidationError } from '../shared/errors.js';
 import { onLearningActivityOccurred, onStudentCreated, onEnrollmentCreated } from '../profile/dynamicLearnerIntelligenceEngine.js';
 
 /**
+ * Primary domain entrypoint for recording structured learning events.
+ * 
+ * @param {object} payload 
+ * @param {object} [authUser] 
+ * @returns {Promise<{ isDuplicate: boolean, event: object }>}
+ */
+export async function recordLearningEvent(payload, authUser = null) {
+  return publishLearningEvent(payload, authUser);
+}
+
+/**
  * Ingests and stores a single learning event with idempotency guarantees.
  * 
  * @param {object} rawPayload 

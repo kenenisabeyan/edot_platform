@@ -67,6 +67,7 @@ export function validateAndNormalizeLearningEvent(payload, authUser = null) {
     lessonId,
     quizId,
     assignmentId,
+    attemptId,
     timestamp,
     duration,
     score,
@@ -76,7 +77,7 @@ export function validateAndNormalizeLearningEvent(payload, authUser = null) {
   } = payload;
 
   // 1. Resolve & validate userId
-  const effectiveUserId = userId || authUser?.id;
+  const effectiveUserId = userId || payload.studentId || authUser?.id;
   if (!effectiveUserId || typeof effectiveUserId !== 'string') {
     throw new ValidationError('userId is required and must be a valid string identifier');
   }
@@ -94,8 +95,9 @@ export function validateAndNormalizeLearningEvent(payload, authUser = null) {
 
   // 4. Validate timestamp
   let parsedTimestamp = new Date();
-  if (timestamp) {
-    parsedTimestamp = new Date(timestamp);
+  const rawTimestamp = timestamp || payload.occurredAt;
+  if (rawTimestamp) {
+    parsedTimestamp = new Date(rawTimestamp);
     if (isNaN(parsedTimestamp.getTime())) {
       throw new ValidationError('Invalid timestamp provided. Must be a valid ISO 8601 date string');
     }
@@ -144,6 +146,7 @@ export function validateAndNormalizeLearningEvent(payload, authUser = null) {
     lessonId: lessonId ? String(lessonId) : null,
     quizId: quizId ? String(quizId) : null,
     assignmentId: assignmentId ? String(assignmentId) : null,
+    attemptId: attemptId ? String(attemptId) : null,
     timestamp: parsedTimestamp,
     duration: parsedDuration,
     score: parsedScore,

@@ -107,6 +107,7 @@ model User {
   learningSessions     LearningSession[]
   analyticsReport      LearnerAnalyticsReport?
   learningEvents       LearningEvent[]       @relation("UserLearningEvents")
+  courseLearnerProfiles CourseLearnerProfile[] @relation("UserCourseLearnerProfiles")
   mentorSessions       MentorSession[]       @relation("UserMentorSessions")
   learnerRecommendations LearnerRecommendation[] @relation("UserLearnerRecommendations")
   adaptivePlans        AdaptiveLearningPlan[]  @relation("UserAdaptivePlans")
@@ -149,6 +150,10 @@ model LearnerProfile {
   studyConsistencyScore Float    @default(0)
   weeklyStudyHours      Float    @default(0)
   currentFocus          String?
+  preferredLearningStyle String   @default("visual")
+  currentSkillState     Json?
+  overallLearningStatus String   @default("ON_TRACK")
+  lastActiveAt          DateTime @default(now())
   confidenceScore       Float    @default(0)
   aiReadinessScore      Float    @default(0)
 
@@ -485,6 +490,7 @@ model Course {
   progressLogs       ProgressLog[]
   certificates       Certificate[]
   userProgress       UserCourseProgress[]
+  courseLearnerProfiles CourseLearnerProfile[] @relation("CourseLearnerProfiles")
   libraryItems       Library[]
   courseReports      CourseReport[]
   sponsorships       Sponsorship[]        @relation("SponsorshipCourses")
@@ -610,6 +616,7 @@ model Enrollment {
   
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  courseLearnerProfiles CourseLearnerProfile[] @relation("EnrollmentCourseLearnerProfiles")
 
   @@unique([studentId, courseId])
 }
@@ -1302,6 +1309,7 @@ model LearningEvent {
   lessonId        String?
   quizId          String?
   assignmentId    String?
+  attemptId       String?
   timestamp       DateTime @default(now())
   duration        Float?   // duration in seconds
   score           Float?   // assessment score
@@ -1321,6 +1329,37 @@ model LearningEvent {
   @@index([eventType, timestamp])
   @@index([courseId, timestamp])
   @@index([userId, eventType, timestamp])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Course Learner Intelligence Profile
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CourseLearnerProfile {
+  id                 String      @id @default(uuid())
+  userId             String
+  user               User        @relation("UserCourseLearnerProfiles", fields: [userId], references: [id], onDelete: Cascade)
+  courseId           String
+  course             Course      @relation("CourseLearnerProfiles", fields: [courseId], references: [id], onDelete: Cascade)
+  enrollmentId       String?
+  enrollment         Enrollment? @relation("EnrollmentCourseLearnerProfiles", fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  progressPercentage Float       @default(0)
+  learningStatus     String      @default("NOT_STARTED") // NOT_STARTED, ACTIVE, ON_TRACK, NEEDS_ATTENTION, SUPPORT_RECOMMENDED, COMPLETED
+  engagementLevel    String      @default("MEDIUM")      // LOW, MEDIUM, HIGH
+  performanceTrend   String      @default("STABLE")      // IMPROVING, STABLE, DECLINING
+  lastActivityAt     DateTime    @default(now())
+
+  strengthSummary    Json?
+  improvementSummary Json?
+
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([learningStatus])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

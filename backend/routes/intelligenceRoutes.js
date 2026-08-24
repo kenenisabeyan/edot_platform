@@ -16,6 +16,16 @@ import express from 'express';
 import { protect, authorize, checkNotBlocked } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { publishLearningEvent } from '../src/intelligence/events/learningEventService.js';
+import {
+  getStudentLearningSummary,
+  getCourseLearningSummary,
+  calculateRecentActivity
+} from '../src/intelligence/analytics/learningAnalyticsService.js';
+import { resolveActiveLearningContext } from '../src/intelligence/context/courseContextResolver.js';
+import { resolveNextBestAction } from '../src/intelligence/recommendations/nextBestActionResolver.js';
+import { detectAndRegisterMisconceptions } from '../src/intelligence/understanding/misconceptionEngine.js';
+import { generateAdaptiveSequence } from '../src/intelligence/adaptive/adaptiveSequencer.js';
+import { syncLearnerProfile } from '../src/intelligence/profile/profileService.js';
 
 const router = express.Router();
 
@@ -395,6 +405,137 @@ router.get('/analytics/admin/at-risk', protect, authorize('admin'), async (req, 
   } catch (error) {
     console.error('At-risk report error:', error);
     return res.status(500).json({ success: false, message: 'Failed to load at-risk report' });
+  }
+});
+
+// ─── PHASE 1: Learning Data Foundation APIs ─────────────────────────────────
+
+/**
+ * GET /api/intelligence/learning-context/me
+ * Resolves current active learning context.
+ */
+router.get('/learning-context/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const context = await resolveActiveLearningContext(req.user.id);
+    return res.json({ success: true, data: context });
+  } catch (error) {
+    console.error('Learning context error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/learning-summary/me
+ * Computes empirical overall student learning summary.
+ */
+router.get('/learning-summary/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const summary = await getStudentLearningSummary(req.user.id);
+    return res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('Learning summary error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/learning-summary/me/courses/:courseId
+ * Computes course-level empirical learning summary.
+ */
+router.get('/learning-summary/me/courses/:courseId', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const summary = await getCourseLearningSummary(req.user.id, req.params.courseId);
+    return res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('Course learning summary error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/learning-activity/me
+ * Retrieves recent telemetry events.
+ */
+router.get('/learning-activity/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const activities = await calculateRecentActivity(req.user.id, limit);
+    return res.json({ success: true, data: activities });
+  } catch (error) {
+    console.error('Learning activity error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 2: Learner Intelligence APIs ──────────────────────────────────────
+
+/**
+ * GET /api/intelligence/learner-profile/me
+ * Computes 18-dimension Learner Digital Twin.
+ */
+router.get('/learner-profile/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const profile = await syncLearnerProfile(req.user.id);
+    const recentEvents = await calculateRecentActivity(req.user.id, 1);
+    const dataStatus = recentEvents.length > 0 ? 'SUFFICIENT' : 'INSUFFICIENT';
+
+    return res.json({
+      success: true,
+      data: {
+        sourceType: 'LEARNER_DIGITAL_TWIN',
+        studentId: req.user.id,
+        generatedAt: new Date(),
+        confidence: dataStatus === 'SUFFICIENT' ? 0.95 : 0.2,
+        dataStatus,
+        profile
+      }
+    });
+  } catch (error) {
+    console.error('Learner profile error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/next-action/me
+ * Resolves single, explainable Next Best Action.
+ */
+router.get('/next-action/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const nextAction = await resolveNextBestAction(req.user.id);
+    return res.json({ success: true, data: nextAction });
+  } catch (error) {
+    console.error('Next Best Action error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/misconceptions/me
+ * Detects conceptual misconceptions from quiz attempts.
+ */
+router.get('/misconceptions/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const misconceptions = await detectAndRegisterMisconceptions(req.user.id);
+    return res.json({ success: true, data: misconceptions });
+  } catch (error) {
+    console.error('Misconceptions error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/adaptive-path/me
+ * Generates non-destructive adaptive learning sequence recommendations.
+ */
+router.get('/adaptive-path/me', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const courseId = req.query.courseId || null;
+    const adaptivePath = await generateAdaptiveSequence(req.user.id, courseId);
+    return res.json({ success: true, data: adaptivePath });
+  } catch (error) {
+    console.error('Adaptive path error:', error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
