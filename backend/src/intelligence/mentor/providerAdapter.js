@@ -31,7 +31,7 @@ export class GeminiAIProvider extends AIProvider {
   }
 
   async chat(prompt, context = {}, options = {}) {
-    const { modelName = 'gemini-1.5-flash', timeoutMs = 15000 } = options;
+    const { modelName = 'gemini-3.6-flash', timeoutMs = 15000 } = options;
 
     if (!this.apiKey || !this.genAI) {
       return this.fallbackChatResponse(prompt, context);

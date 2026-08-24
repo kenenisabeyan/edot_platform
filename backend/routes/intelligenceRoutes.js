@@ -67,6 +67,42 @@ import {
   adaptCurriculumSequencing,
   getEcosystemSummary
 } from '../src/intelligence/adaptive/closedLoopAdaptationEngine.js';
+import {
+  getKnowledgeNodeById,
+  getKnowledgeNodes
+} from '../src/intelligence/knowledge/knowledgeGraphService.js';
+import {
+  createKnowledgeRelationship,
+  getNodePrerequisites,
+  deleteKnowledgeRelationship
+} from '../src/intelligence/knowledge/prerequisiteService.js';
+import {
+  approveContentMapping,
+  rejectContentMapping,
+  getCourseKnowledgeMap
+} from '../src/intelligence/knowledge/contentIntelligenceService.js';
+import { processCourseContent } from '../src/intelligence/knowledge/contentProcessingPipeline.js';
+import { retrieveAuthorizedKnowledge } from '../src/intelligence/knowledge/knowledgeRetrievalService.js';
+import {
+  evaluateStudentConceptMastery,
+  getStudentConceptMastery
+} from '../src/intelligence/mastery/masteryEvaluationEngine.js';
+import { identifyConceptGaps } from '../src/intelligence/mastery/masteryGapResolver.js';
+import { recordConceptEvidence, getConceptEvidenceSummary } from '../src/intelligence/mastery/conceptEvidenceService.js';
+import { resolveMasteryState } from '../src/intelligence/mastery/masteryStateResolver.js';
+import { identifyPrerequisiteGaps } from '../src/intelligence/mastery/prerequisiteGapService.js';
+import { generateMasteryRecommendations } from '../src/intelligence/mastery/masteryRecommendationService.js';
+import { evaluateAssessmentConceptCoverage } from '../src/intelligence/mastery/assessmentIntelligenceService.js';
+import { analyzeQuestionPerformance } from '../src/intelligence/mastery/questionIntelligenceService.js';
+import { startPracticeSession, submitPracticeAnswer } from '../src/intelligence/practice/practiceSessionService.js';
+import { getAuthorizedPracticeHint } from '../src/intelligence/practice/aiPracticeMentorService.js';
+import { evaluateNextBestAction } from '../src/intelligence/learningEngine/personalLearningEngine.js';
+import { updateStudentLearningPlan, getStudentLearningPlan, completeLearningAction } from '../src/intelligence/learningEngine/adaptiveLearningPlanService.js';
+import { resolveLearnerContext } from '../src/intelligence/personalLearning/learnerContextResolver.js';
+import { resolveCandidateActions } from '../src/intelligence/personalLearning/nextActionResolver.js';
+import { rankRecommendations } from '../src/intelligence/personalLearning/recommendationRanker.js';
+import { getOrUpdateLearningPlan } from '../src/intelligence/personalLearning/learningPlanService.js';
+import { updateActionLifecycle } from '../src/intelligence/personalLearning/recommendationOutcomeService.js';
 
 const router = express.Router();
 
@@ -1099,6 +1135,535 @@ router.post('/ecosystem/trigger-adaptation', protect, checkNotBlocked, async (re
     return res.json({ success: true, data: { outcomes, adaptedSequence } });
   } catch (error) {
     console.error('Trigger adaptation error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 8: Knowledge & Content Intelligence APIs ────────────────────────────
+
+/**
+ * GET /api/intelligence/knowledge/course/:courseId/map
+ * Retrieves course knowledge coverage map and mapped KnowledgeNodes.
+ */
+router.get('/knowledge/course/:courseId/map', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const mapData = await getCourseKnowledgeMap(req.params.courseId);
+    return res.json({ success: true, data: mapData });
+  } catch (error) {
+    console.error('Course knowledge map error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/knowledge/node/:nodeId
+ * Retrieves KnowledgeNode details with outgoing/incoming relationships and content mappings.
+ */
+router.get('/knowledge/node/:nodeId', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const node = await getKnowledgeNodeById(req.params.nodeId);
+    return res.json({ success: true, data: node });
+  } catch (error) {
+    console.error('Get knowledge node error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/knowledge/node/:nodeId/prerequisites
+ * Retrieves direct prerequisites for a KnowledgeNode.
+ */
+router.get('/knowledge/node/:nodeId/prerequisites', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const prereqs = await getNodePrerequisites(req.params.nodeId);
+    return res.json({ success: true, data: prereqs });
+  } catch (error) {
+    console.error('Get node prerequisites error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/knowledge/retrieve
+ * Shared authorized knowledge retrieval for AI systems (RAG/Mentor/Practice).
+ */
+router.get('/knowledge/retrieve', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { courseId, lessonId, query } = req.query;
+    const result = await retrieveAuthorizedKnowledge({
+      userId: req.user.id,
+      courseId,
+      lessonId,
+      query
+    });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Authorized knowledge retrieval error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/knowledge/process-course
+ * Asynchronously queues course content processing and concept extraction.
+ */
+router.post('/knowledge/process-course', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const result = await processCourseContent(req.body.courseId);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Process course content error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/knowledge/mapping/:id/approve
+ * Instructor approves a knowledge content mapping.
+ */
+router.post('/knowledge/mapping/:id/approve', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const result = await approveContentMapping(req.params.id, req.user.id);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Approve content mapping error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/knowledge/mapping/:id/reject
+ * Instructor rejects a knowledge content mapping.
+ */
+router.post('/knowledge/mapping/:id/reject', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const result = await rejectContentMapping(req.params.id, req.user.id);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Reject content mapping error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/knowledge/prerequisite
+ * Creates a validated knowledge relationship (with cycle & self-reference checks).
+ */
+router.post('/knowledge/prerequisite', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const result = await createKnowledgeRelationship({
+      sourceNodeId: req.body.sourceNodeId,
+      targetNodeId: req.body.targetNodeId,
+      relationType: req.body.relationType || 'PREREQUISITE_OF',
+      confidence: req.body.confidence || 1.0,
+      source: req.body.source || 'INSTRUCTOR_DEFINED',
+      reviewStatus: req.body.reviewStatus || 'APPROVED',
+      evidenceSummary: req.body.evidenceSummary || null
+    });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Create knowledge prerequisite error:', error);
+    const status = error.statusCode || 400;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * DELETE /api/intelligence/knowledge/prerequisite/:id
+ * Deletes a knowledge relationship.
+ */
+router.delete('/knowledge/prerequisite/:id', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    await deleteKnowledgeRelationship(req.params.id);
+    return res.json({ success: true, message: 'Relationship deleted successfully.' });
+  } catch (error) {
+    console.error('Delete knowledge prerequisite error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 9: Concept Mastery & Assessment Intelligence APIs ─────────────────
+
+/**
+ * GET /api/intelligence/mastery/student/:studentId
+ * Retrieves student concept mastery records with authorization checks.
+ */
+router.get('/mastery/student/:studentId', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const targetStudentId = req.params.studentId;
+
+    // Authorization
+    if (req.user.role === 'student' && req.user.id !== targetStudentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only access their own concept mastery.' });
+    }
+    if (req.user.role === 'guardian') {
+      const link = await prisma.guardianStudent.findFirst({
+        where: { guardianId: req.user.id, studentId: targetStudentId, status: 'APPROVED' }
+      });
+      if (!link) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Guardian is not authorized for this student.' });
+      }
+    }
+    if (req.user.role === 'instructor' && req.query.courseId) {
+      const course = await prisma.course.findFirst({
+        where: { id: req.query.courseId, instructorId: req.user.id }
+      });
+      if (!course) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Instructor does not own this course.' });
+      }
+    }
+
+    const courseId = req.query.courseId || null;
+    const masteries = await getStudentConceptMastery(targetStudentId, courseId);
+    return res.json({ success: true, data: masteries });
+  } catch (error) {
+    console.error('Get student concept mastery error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/mastery/evidence
+ * Retrieves concept evidence summary.
+ */
+router.get('/mastery/evidence', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const { nodeId } = req.query;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only view their own evidence.' });
+    }
+
+    const summary = await getConceptEvidenceSummary(studentId, nodeId);
+    return res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('Get concept evidence error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/mastery/prerequisite-gaps
+ * Identifies prerequisite gaps using Phase 8 Knowledge Graph.
+ */
+router.get('/mastery/prerequisite-gaps', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const { nodeId } = req.query;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
+
+    const gaps = await identifyPrerequisiteGaps(studentId, nodeId);
+    return res.json({ success: true, data: gaps });
+  } catch (error) {
+    console.error('Identify prerequisite gaps error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/mastery/recommendations
+ * Generates mastery recommendations connecting to real EDOT content.
+ */
+router.get('/mastery/recommendations', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const courseId = req.query.courseId || null;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
+
+    const recommendations = await generateMasteryRecommendations(studentId, courseId);
+    return res.json({ success: true, data: recommendations });
+  } catch (error) {
+    console.error('Generate mastery recommendations error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/mastery/assessment/:quizId/coverage
+ * Evaluates concept coverage measured by an assessment.
+ */
+router.get('/mastery/assessment/:quizId/coverage', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const { courseId } = req.query;
+    const { quizId } = req.params;
+
+    if (req.user.role === 'instructor') {
+      const course = await prisma.course.findFirst({ where: { id: courseId, instructorId: req.user.id } });
+      if (!course) return res.status(403).json({ success: false, message: 'Forbidden: Instructor does not own this course.' });
+    }
+
+    const coverage = await evaluateAssessmentConceptCoverage(courseId, quizId);
+    return res.json({ success: true, data: coverage });
+  } catch (error) {
+    console.error('Assessment concept coverage error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/mastery/question/intelligence
+ * Analyzes question performance and quality signals.
+ */
+router.get('/mastery/question/intelligence', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const { courseId, quizId, questionIndex } = req.query;
+
+    if (req.user.role === 'instructor') {
+      const course = await prisma.course.findFirst({ where: { id: courseId, instructorId: req.user.id } });
+      if (!course) return res.status(403).json({ success: false, message: 'Forbidden: Instructor does not own this course.' });
+    }
+
+    const qIntel = await analyzeQuestionPerformance(courseId, quizId, parseInt(questionIndex, 10) || 0);
+    return res.json({ success: true, data: qIntel });
+  } catch (error) {
+    console.error('Question intelligence error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 10: Practice & Adaptive Assessment Intelligence APIs ─────────────────
+
+/**
+ * POST /api/intelligence/practice/session/start
+ * Starts a new concept-grounded practice session for a student.
+ */
+router.post('/practice/session/start', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.body.studentId || req.user.id;
+    const { courseId, nodeId } = req.body;
+    const session = await startPracticeSession(studentId, courseId, nodeId);
+    return res.json({ success: true, data: session });
+  } catch (error) {
+    console.error('Start practice session error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/practice/session/submit
+ * Submits an answer for a practice question and evaluates performance.
+ */
+router.post('/practice/session/submit', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { sessionId, questionIndex, selectedOptionIndex } = req.body;
+    const result = await submitPracticeAnswer(sessionId, questionIndex, selectedOptionIndex);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Submit practice answer error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PERSONAL LEARNING ENGINE & ADAPTIVE PLAN APIS ─────────────────────────────
+
+/**
+ * GET /api/intelligence/personal-learning-engine/next-action
+ * Evaluates 10 intelligence inputs to resolve Next Best Learning Action.
+ */
+router.get('/personal-learning-engine/next-action', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const { courseId } = req.query;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only access their own next action.' });
+    }
+
+    const nextAction = await evaluateNextBestAction(studentId, courseId);
+    return res.json({ success: true, data: nextAction });
+  } catch (error) {
+    console.error('Evaluate next best action error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/personal-learning-engine/plan
+ * Retrieves active personalized learning plan.
+ */
+router.get('/personal-learning-engine/plan', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const { courseId } = req.query;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only access their own learning plan.' });
+    }
+
+    const plan = await getStudentLearningPlan(studentId, courseId);
+    return res.json({ success: true, data: plan });
+  } catch (error) {
+    console.error('Get learning plan error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 10: PERSONAL LEARNING ENGINE APIS ─────────────────────────────
+
+/**
+ * GET /api/intelligence/personal-learning/overview
+ * Unified overview of student learning context and active plan.
+ */
+router.get('/personal-learning/overview', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only access their own learning overview.' });
+    }
+
+    const context = await resolveLearnerContext(studentId, req.query.courseId);
+    const planResult = await getOrUpdateLearningPlan(studentId, context.activeCourseId);
+
+    return res.json({ success: true, data: { context, planResult } });
+  } catch (error) {
+    console.error('Personal learning overview error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/personal-learning/plan
+ * Retrieves active personalized learning plan.
+ */
+router.get('/personal-learning/plan', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const { courseId } = req.query;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only access their own learning plan.' });
+    }
+
+    const plan = await getOrUpdateLearningPlan(studentId, courseId);
+    return res.json({ success: true, data: plan });
+  } catch (error) {
+    console.error('Get personal learning plan error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/personal-learning/recommendations
+ * Retrieves ranked recommendations for active course.
+ */
+router.get('/personal-learning/recommendations', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.query.studentId || req.user.id;
+    const { courseId } = req.query;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only access their own recommendations.' });
+    }
+
+    const context = await resolveLearnerContext(studentId, courseId);
+    const actions = await resolveCandidateActions(context);
+    const ranked = rankRecommendations(actions);
+
+    return res.json({ success: true, data: ranked });
+  } catch (error) {
+    console.error('Get recommendations error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/personal-learning/recommendations/:id/start
+ * Updates action lifecycle status to STARTED.
+ */
+router.post('/personal-learning/recommendations/:id/start', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const actionId = req.params.id;
+    const studentId = req.user.id;
+    const result = await updateActionLifecycle(actionId, studentId, 'STARTED');
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Start recommendation error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/personal-learning/recommendations/:id/complete
+ * Updates action lifecycle status to COMPLETED and triggers feedback loop.
+ */
+router.post('/personal-learning/recommendations/:id/complete', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const actionId = req.params.id;
+    const studentId = req.user.id;
+    const result = await updateActionLifecycle(actionId, studentId, 'COMPLETED', req.body.outcome || null);
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Complete recommendation error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/personal-learning/recommendations/:id/dismiss
+ * Updates action lifecycle status to DISMISSED.
+ */
+router.post('/personal-learning/recommendations/:id/dismiss', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const actionId = req.params.id;
+    const studentId = req.user.id;
+    const result = await updateActionLifecycle(actionId, studentId, 'DISMISSED');
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Dismiss recommendation error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/personal-learning/recalculate
+ * Triggers async recommendation recalculation for a student.
+ */
+router.post('/personal-learning/recalculate', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.body.studentId || req.user.id;
+    const { courseId } = req.body;
+
+    if (req.user.role === 'student' && req.user.id !== studentId) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Students can only recalculate their own plan.' });
+    }
+
+    const planResult = await getOrUpdateLearningPlan(studentId, courseId);
+    return res.json({ success: true, data: planResult });
+  } catch (error) {
+    console.error('Recalculate recommendation error:', error);
     const status = error.statusCode || 500;
     return res.status(status).json({ success: false, message: error.message });
   }

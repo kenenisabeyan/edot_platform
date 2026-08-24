@@ -133,6 +133,9 @@ model User {
   guardianLinks        GuardianStudent[]     @relation("GuardianStudentGuardian")
   studentLinks         GuardianStudent[]     @relation("GuardianStudentStudent")
   guardianNotifications GuardianNotification[] @relation("UserGuardianNotifications")
+  conceptMasteries     LearnerConceptMastery[] @relation("UserConceptMasteries")
+  conceptPracticeSessions PracticeSession[]   @relation("UserConceptPracticeSessions")
+  studentLearningPlans StudentLearningPlan[]  @relation("UserLearningPlans")
 }
 
 model LearnerProfile {
@@ -356,6 +359,10 @@ model MentorMessage {
   sectionId         String?
   lessonId          String?
   responseId        String?
+  intentType        String?  // EXPLAIN_CONCEPT | SIMPLIFY | GIVE_EXAMPLE | STEP_BY_STEP_GUIDANCE | REVIEW_TOPIC | PRACTICE_REQUEST | WHAT_SHOULD_I_DO_NEXT | GENERAL_EDUCATIONAL | UNKNOWN
+  groundingStatus   String?  // COURSE_GROUNDED | EDOT_KNOWLEDGE_GROUNDED | GENERAL_EDUCATIONAL | LIMITED_CONTEXT
+  suggestedActions  Json?
+  sources           Json?
   createdAt         DateTime @default(now())
 
   @@index([conversationId])
@@ -502,6 +509,11 @@ model Course {
   snapshots          CourseIntelligenceSnapshot[] @relation("CourseSnapshots")
   skillMappings      CourseSkillMapping[]
   instructorInterventions InstructorIntervention[] @relation("CourseInstructorInterventions")
+  knowledgeContentMappings KnowledgeContentMapping[]
+  knowledgeChunks    KnowledgeChunk[]
+  practiceSessions   PracticeSession[]       @relation("CoursePracticeSessions")
+  questionIntelligence QuestionIntelligence[] @relation("CourseQuestionIntelligence")
+  studentLearningPlans StudentLearningPlan[]  @relation("CourseLearningPlans")
 }
 
 model Lesson {
@@ -522,6 +534,8 @@ model Lesson {
   materials        Material[] @relation("LessonMaterials")
   quizzes          Quiz[]     @relation("LessonQuizzes")
   intelligenceDocuments CourseIntelligenceDocument[]
+  knowledgeContentMappings KnowledgeContentMapping[]
+  knowledgeChunks    KnowledgeChunk[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -2135,3 +2149,243 @@ model GuardianNotification {
   @@index([type])
   @@index([status])
 }
+
+model KnowledgeNode {
+  id               String   @id @default(uuid())
+  name             String
+  normalizedName   String
+  description      String?
+  type             String   @default("CONCEPT") // CONCEPT | SKILL | TOPIC | COMPETENCY | LEARNING_OBJECTIVE
+  domain           String?
+  category         String?
+  status           String   @default("ACTIVE") // ACTIVE | DEPRECATED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  outgoingRelations KnowledgeRelationship[] @relation("SourceKnowledgeNode")
+  incomingRelations KnowledgeRelationship[] @relation("TargetKnowledgeNode")
+  contentMappings   KnowledgeContentMapping[]
+  conceptMasteries  LearnerConceptMastery[]
+  practiceSessions  PracticeSession[]       @relation("NodePracticeSessions")
+  masteryEvidence   MasteryEvidence[]
+
+  @@index([normalizedName])
+  @@index([type])
+  @@index([status])
+}
+
+model KnowledgeRelationship {
+  id               String        @id @default(uuid())
+  sourceNodeId     String
+  sourceNode       KnowledgeNode @relation("SourceKnowledgeNode", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  targetNodeId     String
+  targetNode       KnowledgeNode @relation("TargetKnowledgeNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
+  relationType     String        @default("PREREQUISITE_OF") // PREREQUISITE_OF | RELATED_TO | PART_OF | ADVANCES_TO | REINFORCES | MISCONCEPTION_RELATED_TO
+  confidence       Float         @default(1.0)
+  source           String        @default("AI_EXTRACTED") // INSTRUCTOR_DEFINED | AI_EXTRACTED | SYSTEM_INFERRED
+  reviewStatus     String        @default("APPROVED") // SUGGESTED | APPROVED | REJECTED
+  evidenceSummary  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([sourceNodeId, targetNodeId, relationType])
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+  @@index([relationType])
+  @@index([reviewStatus])
+}
+
+model KnowledgeContentMapping {
+  id               String        @id @default(uuid())
+  nodeId           String
+  node             KnowledgeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  courseId         String
+  course           Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sectionId        String?
+  lessonId         String?
+  lesson           Lesson?       @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  contentType      String        @default("LESSON") // LESSON | RESOURCE | QUIZ | ASSIGNMENT
+  contentId        String?
+  relevance        Float         @default(1.0)
+  confidence       Float         @default(1.0)
+  source           String        @default("AI_EXTRACTED") // INSTRUCTOR_DEFINED | AI_EXTRACTED
+  reviewStatus     String        @default("AUTO_DETECTED") // AUTO_DETECTED | REVIEW_REQUIRED | APPROVED | REJECTED
+  createdBy        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([nodeId])
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([reviewStatus])
+}
+
+model KnowledgeChunk {
+  id                 String   @id @default(uuid())
+  courseId           String
+  course             Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sectionId          String?
+  lessonId           String?
+  lesson             Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  contentVersion     Int      @default(1)
+  chunkIndex         Int
+  text               String
+  metadata           Json?
+  processingStatus   String   @default("COMPLETED") // PENDING | PROCESSING | COMPLETED | FAILED | STALE
+  authorizationScope String   @default("ENROLLED_STUDENTS") // ENROLLED_STUDENTS | INSTRUCTOR_ONLY | PUBLIC
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([lessonId])
+  @@index([processingStatus])
+}
+
+model LearnerConceptMastery {
+  id                    String        @id @default(uuid())
+  userId                String
+  user                  User          @relation("UserConceptMasteries", fields: [userId], references: [id], onDelete: Cascade)
+  nodeId                String
+  node                  KnowledgeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  courseId              String?
+  masteryScore          Float         @default(0.0) // 0.0 to 1.0
+  masteryLevel          String        @default("UNKNOWN") // UNKNOWN | EXPOSED | LEARNING | DEVELOPING | PROFICIENT | MASTERED | NEEDS_REINFORCEMENT
+  masteryState          String        @default("UNKNOWN") // UNKNOWN | EXPOSED | LEARNING | DEVELOPING | PROFICIENT | MASTERED | NEEDS_REINFORCEMENT
+  dataStatus            String        @default("INSUFFICIENT_DATA") // SUFFICIENT_DATA | LIMITED_DATA | INSUFFICIENT_DATA | STALE
+  confidenceScore       Float         @default(0.5) // 0.0 to 1.0
+  masteryConfidence     Float         @default(0.5) // 0.0 to 1.0
+  decayFactor           Float         @default(1.0) // 0.0 to 1.0
+  evidenceCount         Int           @default(0)
+  lastEvidenceAt        DateTime?
+  lastEvaluatedAt       DateTime      @default(now())
+  lastPracticedAt       DateTime      @default(now())
+  totalAttempts         Int           @default(0)
+  successfulAttempts    Int           @default(0)
+  prerequisiteMasteryMet Boolean      @default(true)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  evidenceRecords       MasteryEvidence[]
+
+  @@unique([userId, nodeId])
+  @@index([userId])
+  @@index([nodeId])
+  @@index([masteryState])
+  @@index([dataStatus])
+}
+
+model MasteryEvidence {
+  id               String                @id @default(uuid())
+  studentId        String
+  nodeId           String
+  node             KnowledgeNode         @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  courseId         String?
+  sourceType       String                // LESSON_INTERACTION | QUIZ_ATTEMPT | ASSESSMENT | ASSIGNMENT | PRACTICE | REPEATED_ATTEMPT | MISCONCEPTION_SIGNAL | INSTRUCTOR_REVIEW
+  sourceId         String?
+  signalType       String                @default("PERFORMANCE") // EXPOSURE | PERFORMANCE | CONSISTENCY | MISCONCEPTION | PRACTICE
+  value            Float                 @default(1.0)
+  weight           Float                 @default(1.0)
+  confidence       Float                 @default(1.0)
+  occurredAt       DateTime              @default(now())
+  createdAt        DateTime              @default(now())
+
+  masteryId        String?
+  masteryRecord    LearnerConceptMastery? @relation(fields: [masteryId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([nodeId])
+  @@index([sourceType])
+}
+
+model QuestionIntelligence {
+  id               String   @id @default(uuid())
+  courseId         String
+  course           Course   @relation("CourseQuestionIntelligence", fields: [courseId], references: [id], onDelete: Cascade)
+  quizId           String
+  questionIndex    Int
+  attemptCount     Int      @default(0)
+  correctCount     Int      @default(0)
+  incorrectCount   Int      @default(0)
+  difficultySignal String   @default("UNKNOWN") // VERY_EASY | EASY | MODERATE | DIFFICULT | VERY_DIFFICULT | UNKNOWN
+  qualitySignal    String   @default("INSUFFICIENT_DATA") // REVIEW_RECOMMENDED | NO_CONCERN | INSUFFICIENT_DATA
+  mappedNodeId     String?
+  lastAnalyzedAt   DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([courseId, quizId, questionIndex])
+  @@index([courseId])
+  @@index([quizId])
+  @@index([qualitySignal])
+}
+
+model PracticeSession {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation("UserConceptPracticeSessions", fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course         @relation("CoursePracticeSessions", fields: [courseId], references: [id], onDelete: Cascade)
+  nodeId         String
+  node           KnowledgeNode  @relation("NodePracticeSessions", fields: [nodeId], references: [id], onDelete: Cascade)
+  status         String         @default("IN_PROGRESS") // IN_PROGRESS | COMPLETED | ABANDONED
+  score          Float          @default(0.0)
+  questionsCount Int            @default(3)
+  correctCount   Int            @default(0)
+  questionsData  Json?
+  startedAt      DateTime       @default(now())
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([nodeId])
+  @@index([status])
+}
+
+model StudentLearningPlan {
+  id                  String                      @id @default(uuid())
+  studentId           String
+  user                User                        @relation("UserLearningPlans", fields: [studentId], references: [id], onDelete: Cascade)
+  courseId            String
+  course              Course                      @relation("CourseLearningPlans", fields: [courseId], references: [id], onDelete: Cascade)
+  status              String                      @default("ACTIVE") // ACTIVE | COMPLETED | REVISED
+  currentFocusNodeId  String?
+  primaryActionId     String?
+  recommendedActions  Json?
+  lastUpdated         DateTime                    @default(now())
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+
+  actions             PersonalizedLearningAction[]
+
+  @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
+  @@index([status])
+}
+
+model PersonalizedLearningAction {
+  id              String               @id @default(uuid())
+  planId          String
+  plan            StudentLearningPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  studentId       String
+  courseId        String
+  actionType      String               // CONTINUE_CURRENT_LESSON | CONTINUE_CURRENT_SECTION | REVIEW_CONCEPT | REVIEW_PREREQUISITE | PRACTICE_CONCEPT | RETRY_ALLOWED_ASSESSMENT | ADVANCE_TO_NEXT_LESSON | ADVANCE_TO_NEXT_SECTION | SEEK_INSTRUCTOR_SUPPORT | RESUME_INACTIVE_LEARNING | TAKE_BREAK | CELEBRATE_MILESTONE | EXPLORE_RELATED_SKILL | NO_ACTION
+  targetNodeId    String?
+  targetLessonId  String?
+  priorityScore   Float                @default(1.0)
+  reason          String
+  explanation     String?
+  status          String               @default("GENERATED") // GENERATED | VIEWED | STARTED | COMPLETED | DISMISSED | EXPIRED | SUPERSEDED
+  outcome         Json?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @default(now()) @updatedAt
+  completedAt     DateTime?
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([actionType])
+  @@index([status])
+}
+
