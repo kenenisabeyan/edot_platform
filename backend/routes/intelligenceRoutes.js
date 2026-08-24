@@ -28,6 +28,30 @@ import { generateAdaptiveSequence } from '../src/intelligence/adaptive/adaptiveS
 import { syncLearnerProfile } from '../src/intelligence/profile/profileService.js';
 import { getLivePulseFeed, evaluateLearnerFatigue } from '../src/intelligence/monitoring/learningPulseEngine.js';
 import { triggerIntelligentNudges, dismissNudge } from '../src/intelligence/nudges/intelligentNudgeEngine.js';
+import {
+  getTeachingOverview,
+  getCourseHealthSummary,
+  getStudentsNeedingSupport,
+  getDifficultConcepts,
+  getEngagementPerformanceTrends,
+  getLearningPulseDistribution
+} from '../src/intelligence/instructor/instructorIntelligenceService.js';
+import { resolveInstructorContext } from '../src/intelligence/context/instructorContextResolver.js';
+import {
+  getRecommendedInstructorActions,
+  createIntervention,
+  updateInterventionStatus,
+  getInterventionHistory
+} from '../src/intelligence/interventions/interventionService.js';
+import {
+  getPlatformOverview,
+  getCategoryGrowthAnalytics,
+  getCourseEngagementCompletionMatrix,
+  getStudentGroupsNeedingSupport,
+  getCrossCourseLearningProblems,
+  getInstructorsNeedingSupport,
+  getInstitutionalRecommendations
+} from '../src/intelligence/admin/adminIntelligenceService.js';
 
 const router = express.Router();
 
@@ -598,6 +622,291 @@ router.post('/pulse/nudges/:nudgeId/dismiss', protect, checkNotBlocked, async (r
   } catch (error) {
     console.error('Dismiss nudge error:', error);
     return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 4: Instructor Intelligence APIs ───────────────────────────────────
+
+/**
+ * GET /api/intelligence/instructor/overview
+ * Computes high-level Teaching Overview statistics across assigned courses.
+ */
+router.get('/instructor/overview', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const overview = await getTeachingOverview(req.user.id);
+    return res.json({ success: true, data: overview });
+  } catch (error) {
+    console.error('Teaching overview error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/courses
+ * Retrieves authorized assigned courses with Class Learning Health statuses.
+ */
+router.get('/instructor/courses', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const context = await resolveInstructorContext(req.user.id);
+    const coursesWithHealth = await Promise.all(
+      context.courses.map(async (c) => {
+        const health = await getCourseHealthSummary(req.user.id, c.id);
+        return { ...c, health };
+      })
+    );
+    return res.json({ success: true, data: { courses: coursesWithHealth, activeCoursesCount: context.activeCoursesCount } });
+  } catch (error) {
+    console.error('Instructor courses health error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/courses/:courseId/health
+ * Evaluates Class Learning Health and signal breakdown for a specific course.
+ */
+router.get('/instructor/courses/:courseId/health', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const health = await getCourseHealthSummary(req.user.id, req.params.courseId);
+    return res.json({ success: true, data: health });
+  } catch (error) {
+    console.error('Course health error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/students-needing-support
+ * Retrieves prioritized authorized students needing support with explainable evidence.
+ */
+router.get('/instructor/students-needing-support', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const courseId = req.query.courseId || null;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const students = await getStudentsNeedingSupport(req.user.id, { courseId, limit });
+    return res.json({ success: true, data: students });
+  } catch (error) {
+    console.error('Students needing support error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/courses/:courseId/difficult-concepts
+ * Detects difficult lessons or concepts using minimum evidence threshold (>=2 students).
+ */
+router.get('/instructor/courses/:courseId/difficult-concepts', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const concepts = await getDifficultConcepts(req.user.id, req.params.courseId);
+    return res.json({ success: true, data: concepts });
+  } catch (error) {
+    console.error('Difficult concepts error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/courses/:courseId/trends
+ * Analyzes engagement and performance trends over time for an assigned course.
+ */
+router.get('/instructor/courses/:courseId/trends', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const trends = await getEngagementPerformanceTrends(req.user.id, req.params.courseId);
+    return res.json({ success: true, data: trends });
+  } catch (error) {
+    console.error('Instructor trends error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/pulse-distribution
+ * Consumes Phase 3 Learning Pulse strictly filtered to authorized students.
+ */
+router.get('/instructor/pulse-distribution', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const courseId = req.query.courseId || null;
+    const distribution = await getLearningPulseDistribution(req.user.id, courseId);
+    return res.json({ success: true, data: distribution });
+  } catch (error) {
+    console.error('Pulse distribution error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/recommended-actions
+ * Generates prioritized actionable teaching recommendations.
+ */
+router.get('/instructor/recommended-actions', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const actions = await getRecommendedInstructorActions(req.user.id);
+    return res.json({ success: true, data: actions });
+  } catch (error) {
+    console.error('Recommended actions error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/instructor/interventions
+ * Retrieves human instructor intervention history log.
+ */
+router.get('/instructor/interventions', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const courseId = req.query.courseId || null;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const history = await getInterventionHistory(req.user.id, { courseId, limit });
+    return res.json({ success: true, data: history });
+  } catch (error) {
+    console.error('Intervention history error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/instructor/interventions
+ * Creates a human instructor intervention record.
+ */
+router.post('/instructor/interventions', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const intervention = await createIntervention(req.user.id, req.body);
+    return res.json({ success: true, data: intervention });
+  } catch (error) {
+    console.error('Create intervention error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * PATCH /api/intelligence/instructor/interventions/:id
+ * Updates status and records outcome of a human intervention.
+ */
+router.patch('/instructor/interventions/:id', protect, authorize('instructor', 'admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const updated = await updateInterventionStatus(req.user.id, req.params.id, req.body);
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Update intervention error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// ─── PHASE 5: Admin Intelligence APIs ────────────────────────────────────────
+
+/**
+ * GET /api/intelligence/admin/overview
+ * Computes macro-level platform intelligence overview metrics.
+ */
+router.get('/admin/overview', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const overview = await getPlatformOverview();
+    return res.json({ success: true, data: overview });
+  } catch (error) {
+    console.error('Admin platform overview error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/admin/category-growth
+ * Retrieves category growth, enrollment distribution, and momentum analytics.
+ */
+router.get('/admin/category-growth', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const growth = await getCategoryGrowthAnalytics();
+    return res.json({ success: true, data: growth });
+  } catch (error) {
+    console.error('Admin category growth error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/admin/course-health-matrix
+ * Maps all platform courses into 4 risk/performance quadrants.
+ */
+router.get('/admin/course-health-matrix', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const matrix = await getCourseEngagementCompletionMatrix();
+    return res.json({ success: true, data: matrix });
+  } catch (error) {
+    console.error('Admin course health matrix error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/admin/student-groups-support
+ * Aggregates student support needs grouped by category/department.
+ */
+router.get('/admin/student-groups-support', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const groups = await getStudentGroupsNeedingSupport();
+    return res.json({ success: true, data: groups });
+  } catch (error) {
+    console.error('Admin student groups support error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/admin/cross-course-problems
+ * Detects learning misconceptions or problems that appear across 2+ distinct courses.
+ */
+router.get('/admin/cross-course-problems', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const problems = await getCrossCourseLearningProblems();
+    return res.json({ success: true, data: problems });
+  } catch (error) {
+    console.error('Admin cross course problems error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/admin/instructors-needing-support
+ * Identifies instructors whose assigned courses exhibit low retention or completion rates.
+ */
+router.get('/admin/instructors-needing-support', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const instructors = await getInstructorsNeedingSupport();
+    return res.json({ success: true, data: instructors });
+  } catch (error) {
+    console.error('Admin instructors needing support error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/admin/institutional-recommendations
+ * Generates macro-level institutional action recommendations for platform administrators.
+ */
+router.get('/admin/institutional-recommendations', protect, authorize('admin'), checkNotBlocked, async (req, res) => {
+  try {
+    const recommendations = await getInstitutionalRecommendations();
+    return res.json({ success: true, data: recommendations });
+  } catch (error) {
+    console.error('Admin institutional recommendations error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
   }
 });
 

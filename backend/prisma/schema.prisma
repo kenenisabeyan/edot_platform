@@ -129,6 +129,7 @@ model User {
   projectSubmissions   ProjectSubmission[]   @relation("UserProjectSubmissions")
   portfolioItems       PortfolioItem[]       @relation("UserPortfolioItems")
   intelligenceFeedbacks IntelligenceFeedback[] @relation("UserIntelligenceFeedbacks")
+  instructorInterventions InstructorIntervention[] @relation("UserInstructorInterventions")
 }
 
 model LearnerProfile {
@@ -497,6 +498,7 @@ model Course {
   intelligenceDocuments CourseIntelligenceDocument[]
   snapshots          CourseIntelligenceSnapshot[] @relation("CourseSnapshots")
   skillMappings      CourseSkillMapping[]
+  instructorInterventions InstructorIntervention[] @relation("CourseInstructorInterventions")
 }
 
 model Lesson {
@@ -2068,5 +2070,29 @@ model KnowledgeDocument {
   @@index([courseId])
   @@index([lessonId])
   @@index([resourceType])
+  @@index([status])
+}
+
+model InstructorIntervention {
+  id               String    @id @default(uuid())
+  instructorId     String
+  instructor       User      @relation("UserInstructorInterventions", fields: [instructorId], references: [id], onDelete: Cascade)
+  courseId         String
+  course           Course    @relation("CourseInstructorInterventions", fields: [courseId], references: [id], onDelete: Cascade)
+  studentId        String?
+  lessonId         String?
+  type             String    // ENCOURAGEMENT_SENT | ANNOUNCEMENT_SENT | ADDITIONAL_PRACTICE_ASSIGNED | SUPPORT_SESSION_RECOMMENDED | PROGRESS_REVIEWED | STUDENT_CONTACTED
+  reason           String
+  evidence         Json?
+  status           String    @default("RECOMMENDED") // RECOMMENDED | STARTED | COMPLETED | DISMISSED
+  outcome          String    @default("INSUFFICIENT_TIME") // ACTIVITY_RESUMED | NO_SIGNIFICANT_CHANGE | IMPROVING | INSUFFICIENT_TIME
+  outcomeNotes     String?
+  createdAt        DateTime  @default(now())
+  completedAt      DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  @@index([instructorId])
+  @@index([courseId])
+  @@index([studentId])
   @@index([status])
 }
