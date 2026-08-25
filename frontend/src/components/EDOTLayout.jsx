@@ -748,7 +748,7 @@ export default function EDOTLayout() {
 
         {/* Page Content */}
          <div className={`flex-1 overflow-y-auto overflow-x-hidden mb-16 md:mb-0 relative z-10 transition-colors duration-300 flex flex-col ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-           <div className={`flex-1 p-4 md:p-8 dashboard-main-content rounded-[32px] border transition-all duration-300 ${isDarkMode ? 'bg-[#0B1120]/95 border-white/10 shadow-[0_30px_80px_-26px_rgba(0,0,0,0.85)]' : 'bg-white/90 border-slate-200 shadow-[0_30px_80px_-26px_rgba(15,23,42,0.22)]'}`}>
+           <div className="flex-1 p-4 md:p-8 dashboard-main-content">
              <Outlet />
            </div>
         </div>
