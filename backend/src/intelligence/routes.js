@@ -21,6 +21,7 @@ import aiQualityRoutes from './ai-quality/aiQualityRoutes.js';
 import performanceRoutes from './performance/performanceRoutes.js';
 import productionRoutes from './production/productionRoutes.js';
 import hyperscaleRoutes from './hyperscale/hyperscaleRoutes.js';
+import domainRoutes from './domain/domainRoutes.js';
 import { intelligenceErrorHandler } from './shared/errors.js';
 
 const router = express.Router();
@@ -43,6 +44,7 @@ router.use('/ai-quality', aiQualityRoutes);
 router.use('/performance', performanceRoutes);
 router.use('/production', productionRoutes);
 router.use('/hyperscale', hyperscaleRoutes);
+router.use('/domains', domainRoutes);
 
 // Intelligence Domain Error Boundary
 router.use(intelligenceErrorHandler);

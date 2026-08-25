@@ -5,7 +5,7 @@
  */
 
 import express from 'express';
-import { protect, authorize, checkNotBlocked } from '../../middleware/auth.js';
+import { protect, authorize, checkNotBlocked } from '../../../middleware/auth.js';
 import {
   createOrUpdateMentorProfile,
   updateMentorVerificationStatus,

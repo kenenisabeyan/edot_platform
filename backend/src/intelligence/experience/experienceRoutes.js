@@ -4,13 +4,12 @@
  */
 
 import express from 'express';
-import { protect, checkNotBlocked } from '../../middleware/auth.js';
+import { protect, checkNotBlocked } from '../../../middleware/auth.js';
 import {
   getStudentExperienceOverview,
   getWhyThisExplanation
 } from './edotIntelligenceExperienceService.js';
-import { getLearnerSkillPassport } from '../career/careerIntelligenceService.js';
-import { getLearnerCareerGoals } from '../career/careerIntelligenceService.js';
+import { getStudentSkillProfile, getCareerGoals } from '../career/careerIntelligenceService.js';
 import { getRecommendedOpportunities } from '../opportunities/opportunityService.js';
 import { translateSkillStatus, translateOpportunityAlignment } from './intelligenceExperienceTranslator.js';
 
@@ -40,7 +39,7 @@ router.get('/action/why', protect, checkNotBlocked, async (req, res, next) => {
 // GET /api/v2/intelligence/experience/skills
 router.get('/skills', protect, checkNotBlocked, async (req, res, next) => {
   try {
-    const passport = await getLearnerSkillPassport(req.user.id);
+    const passport = await getStudentSkillProfile(req.user.id);
     const humanizedSkills = Array.isArray(passport?.skills)
       ? passport.skills.map(s => {
           const status = translateSkillStatus(s.evidenceCount, s.isVerified);
@@ -61,7 +60,7 @@ router.get('/skills', protect, checkNotBlocked, async (req, res, next) => {
 // GET /api/v2/intelligence/experience/career
 router.get('/career', protect, checkNotBlocked, async (req, res, next) => {
   try {
-    const goals = await getLearnerCareerGoals(req.user.id);
+    const goals = await getCareerGoals(req.user.id);
     const humanizedCareer = {
       title: 'Your Future',
       activeGoals: Array.isArray(goals) ? goals.map(g => ({ title: g.title, status: g.status })) : [],

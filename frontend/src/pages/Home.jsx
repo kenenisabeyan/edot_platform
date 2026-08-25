@@ -165,6 +165,8 @@ export default function Home() {
     }
   };
 
+  const [learningDomains, setLearningDomains] = useState([]);
+
   useEffect(() => {
     const fetchUsers = async () => {
       const data = await getRecentPublicUsers();
@@ -188,6 +190,21 @@ export default function Home() {
       }
     };
     fetchTestimonials();
+  }, []);
+
+  useEffect(() => {
+    const fetchDomains = async () => {
+      try {
+        const { default: api } = await import('../utils/api');
+        const res = await api.get('/intelligence/domains').catch(() => ({ data: { success: false } }));
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setLearningDomains(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch domains', err);
+      }
+    };
+    fetchDomains();
   }, []);
 
 

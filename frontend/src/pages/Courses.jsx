@@ -447,6 +447,7 @@ export default function Courses() {
   const [totalCount, setTotalCount] = useState(0);
   
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [dynamicDomains, setDynamicDomains] = useState([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
@@ -454,21 +455,29 @@ export default function Courses() {
   }, [searchTerm]);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDomainsAndStats = async () => {
       try {
-        const { data } = await api.get('/courses/categorized');
-        const statsMap = {};
-        if (data && data.success && data.data) {
-           data.data.forEach(s => {
-             statsMap[s.mainCategory] = s;
-           });
+        const [statsRes, domainsRes] = await Promise.all([
+          api.get('/courses/categorized').catch(() => ({ data: { success: false } })),
+          api.get('/intelligence/domains').catch(() => ({ data: { success: false } }))
+        ]);
+
+        if (statsRes.data?.success && statsRes.data.data) {
+          const statsMap = {};
+          statsRes.data.data.forEach(s => {
+            statsMap[s.mainCategory] = s;
+          });
+          setCategoryStats(statsMap);
         }
-        setCategoryStats(statsMap);
+
+        if (domainsRes.data?.success && Array.isArray(domainsRes.data.data)) {
+          setDynamicDomains(domainsRes.data.data);
+        }
       } catch (err) {
-        console.error('Failed to fetch category stats', err);
+        console.error('Failed to fetch category stats or domains', err);
       }
     };
-    fetchStats();
+    fetchDomainsAndStats();
   }, []);
 
   const fetchCourses = async (isLoadMore = false) => {

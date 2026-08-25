@@ -6,10 +6,10 @@
 import express from 'express';
 import { protect, authorize } from '../../../middleware/auth.js';
 import {
-  getInstructorIntelligenceOverview,
-  getInstructorAtRiskLearners,
-  getInstructorStrugglingTopics,
-  getInstructorRecommendedActions
+  getTeachingOverview,
+  getStudentsNeedingSupport,
+  getDifficultConcepts,
+  getCourseHealthSummary
 } from './instructorIntelligenceService.js';
 
 const router = express.Router();
@@ -17,7 +17,7 @@ const router = express.Router();
 // GET /instructor/intelligence/overview
 router.get('/overview', protect, authorize('instructor', 'admin'), async (req, res, next) => {
   try {
-    const overview = await getInstructorIntelligenceOverview(req.user.id);
+    const overview = await getTeachingOverview(req.user.id);
     res.json({
       success: true,
       data: overview
@@ -30,10 +30,10 @@ router.get('/overview', protect, authorize('instructor', 'admin'), async (req, r
 // GET /instructor/intelligence/at-risk
 router.get('/at-risk', protect, authorize('instructor', 'admin'), async (req, res, next) => {
   try {
-    const atRisk = await getInstructorAtRiskLearners(req.user.id);
+    const atRisk = await getStudentsNeedingSupport(req.user.id);
     res.json({
       success: true,
-      count: atRisk.length,
+      count: Array.isArray(atRisk) ? atRisk.length : 0,
       data: atRisk
     });
   } catch (error) {
@@ -44,10 +44,10 @@ router.get('/at-risk', protect, authorize('instructor', 'admin'), async (req, re
 // GET /instructor/intelligence/struggling-topics
 router.get('/struggling-topics', protect, authorize('instructor', 'admin'), async (req, res, next) => {
   try {
-    const topics = await getInstructorStrugglingTopics(req.user.id);
+    const topics = await getDifficultConcepts(req.user.id);
     res.json({
       success: true,
-      count: topics.length,
+      count: Array.isArray(topics) ? topics.length : 0,
       data: topics
     });
   } catch (error) {
@@ -58,10 +58,9 @@ router.get('/struggling-topics', protect, authorize('instructor', 'admin'), asyn
 // GET /instructor/intelligence/recommended-actions
 router.get('/recommended-actions', protect, authorize('instructor', 'admin'), async (req, res, next) => {
   try {
-    const actions = await getInstructorRecommendedActions(req.user.id);
+    const actions = await getCourseHealthSummary(req.user.id);
     res.json({
       success: true,
-      count: actions.length,
       data: actions
     });
   } catch (error) {

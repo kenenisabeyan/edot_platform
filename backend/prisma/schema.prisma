@@ -3281,6 +3281,31 @@ model SearchIndexRecord {
   @@index([indexedAt])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Dynamic Learning Domains & Category Governance Model
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Dynamic Learning Domain Model (Admin Governed)
+model LearningDomain {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  slug         String   @unique
+  description  String?
+  icon         String?
+  image        String?
+  displayOrder Int      @default(0)
+  status       String   @default("ACTIVE") // ACTIVE | INACTIVE | DRAFT
+  visibility   String   @default("PUBLIC") // PUBLIC | PRIVATE
+  createdBy    String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+}
+
+
 
 
 

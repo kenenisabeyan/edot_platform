@@ -10,7 +10,7 @@
  */
 
 import express from 'express';
-import { protect, checkNotBlocked, checkRole } from '../../middleware/auth.js';
+import { protect, checkNotBlocked, authorize } from '../middleware/auth.js';
 import VoicePolicyEngine from '../src/intelligence/voice/voicePolicyEngine.js';
 
 const router = express.Router();
@@ -21,7 +21,7 @@ router.use(checkNotBlocked);
 // ──────────────────────────────────────────────
 // GET /api/voice/admin/analytics — Admin Usage & Cost Analytics
 // ──────────────────────────────────────────────
-router.get('/analytics', checkRole('admin'), async (req, res) => {
+router.get('/analytics', authorize('admin'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const analytics = await VoicePolicyEngine.getPlatformVoiceAnalytics({ startDate, endDate });
@@ -35,7 +35,7 @@ router.get('/analytics', checkRole('admin'), async (req, res) => {
 // ──────────────────────────────────────────────
 // GET /api/voice/admin/providers — Provider Capability Overview
 // ──────────────────────────────────────────────
-router.get('/providers', checkRole('admin'), async (req, res) => {
+router.get('/providers', authorize('admin'), async (req, res) => {
   try {
     const providers = [
       {
