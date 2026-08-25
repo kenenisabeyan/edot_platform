@@ -124,8 +124,9 @@ export async function getLearnerCareerGapAnalysis(userId, careerPathId) {
     }
   });
 
-  const baseScore = totalScoreWeight > 0 ? (earnedScoreWeight / totalScoreWeight) * 100 : 50;
-  const readinessScore = Math.min(98, Math.max(35, Math.round(baseScore)));
+  // Evidence-based readiness: no artificial floor
+  // 0 skills = INSUFFICIENT_DATA, not 35%
+  const readinessScore = totalScoreWeight > 0 ? Math.round((earnedScoreWeight / totalScoreWeight) * 100) : 0;
 
   // Generate step-by-step learning roadmap
   const roadmapSteps = [];

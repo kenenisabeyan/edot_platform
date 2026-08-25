@@ -84,8 +84,8 @@ export async function getLearnerSkillGraph(userId) {
   await seedSkillGraphData();
 
   const [nodes, relationships, learnerSkills] = await Promise.all([
-    prisma.skillNode.findMany(),
-    prisma.skillRelationship.findMany(),
+    prisma.skillNode.findMany({ take: 100, orderBy: { name: 'asc' } }),
+    prisma.skillRelationship.findMany({ take: 500 }),
     prisma.learnerSkill.findMany({ where: { userId } })
   ]);
 
@@ -101,7 +101,7 @@ export async function getLearnerSkillGraph(userId) {
     domain: n.domain,
     category: n.category,
     level: n.level,
-    masteryScore: masteryMap[n.name.toLowerCase()] || (n.name.includes('HTML') ? 85 : n.name.includes('CSS') ? 70 : 45)
+    masteryScore: masteryMap[n.name.toLowerCase()] || 0
   }));
 
   const graphEdges = relationships.map(r => ({

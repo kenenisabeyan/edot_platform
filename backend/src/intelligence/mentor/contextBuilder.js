@@ -128,6 +128,98 @@ export async function buildStudentLearningContext(userId, options = {}) {
     explanation: 'Continue module exercises'
   };
 
+  // ── Phase 12: Career Intelligence Context (failure-isolated) ──────────────
+  let careerContext = null;
+  try {
+    const { getCareerInterests, getCareerGoals, getStudentSkillProfile } =
+      await import('../career/careerIntelligenceService.js');
+    const [careerInterests, careerGoals, skillProfileData] = await Promise.all([
+      getCareerInterests(userId).catch(() => []),
+      getCareerGoals(userId).catch(() => []),
+      getStudentSkillProfile(userId).catch(() => null)
+    ]);
+
+    careerContext = {
+      activeInterests: careerInterests
+        .filter(i => i.status === 'ACTIVE')
+        .map(i => i.interestText)
+        .slice(0, 5),
+      activeGoals: careerGoals
+        .filter(g => g.status === 'ACTIVE')
+        .map(g => `${g.title} (${g.type})`)
+        .slice(0, 3),
+      skillSummary: skillProfileData
+        ? {
+            strongEvidence: skillProfileData.summary.strongEvidence,
+            developing: skillProfileData.summary.developing,
+            notStarted: skillProfileData.summary.notStarted,
+            topSkills: skillProfileData.skills
+              .filter(s => ['STRONG_EVIDENCE', 'DEMONSTRATING'].includes(s.evidenceState))
+              .slice(0, 5)
+              .map(s => `${s.name} (${s.evidenceState.toLowerCase().replace('_', ' ')})`)
+          }
+        : null
+    };
+  } catch {
+    // Career intelligence context is non-critical; mentor still functions without it
+  }
+
+  // Phase 13 Project & Portfolio Intelligence context (failure-isolated)
+  let projectContext = null;
+  try {
+    const { getPortfolioIntelligence } = await import('../projects/projectService.js');
+    const portfolioIntel = await getPortfolioIntelligence(userId);
+    projectContext = {
+      portfolioCount: portfolioIntel.portfolioCount,
+      publishedProjects: portfolioIntel.portfolioItems.slice(0, 3).map(p => ({
+        title: p.title,
+        demonstratedSkills: p.demonstratedSkills
+      })),
+      projectSuggestions: portfolioIntel.portfolioSuggestions.slice(0, 3).map(s => s.suggestionMessage)
+    };
+  } catch {
+    // Project intelligence context is non-critical; mentor still functions without it
+  }
+
+  // Phase 14 Human, Mentorship & Collaboration context (failure-isolated)
+  let collaborationContext = null;
+  try {
+    const { getRecommendedMentors, getRecommendedPeers, getRecommendedCommunities } = await import('../collaboration/collaborationService.js');
+    const [mentors, peerData, communities] = await Promise.all([
+      getRecommendedMentors(userId).catch(() => []),
+      getRecommendedPeers(userId).catch(() => ({ isDiscoverable: false, peers: [] })),
+      getRecommendedCommunities(userId).catch(() => [])
+    ]);
+
+    collaborationContext = {
+      recommendedMentors: mentors.slice(0, 3).map(m => ({ name: m.name, matchReason: m.matchReason })),
+      peerDiscoverability: peerData.isDiscoverable,
+      recommendedPeersCount: peerData.peers?.length || 0,
+      recommendedCommunities: communities.slice(0, 3).map(c => c.name)
+    };
+  } catch {
+    // Collaboration context is non-critical; mentor still functions without it
+  }
+
+  // Phase 15 Global Opportunity context (failure-isolated)
+  let opportunityContext = null;
+  try {
+    const { getRecommendedOpportunities, getStudentApplications, getStudentConsents } = await import('../opportunities/opportunityService.js');
+    const [opps, apps, consents] = await Promise.all([
+      getRecommendedOpportunities(userId).catch(() => []),
+      getStudentApplications(userId).catch(() => []),
+      getStudentConsents(userId).catch(() => ({ consents: {} }))
+    ]);
+
+    opportunityContext = {
+      recommendedOpportunities: opps.slice(0, 3).map(o => ({ title: o.title, alignment: o.alignmentCategory })),
+      activeApplicationsCount: apps.length,
+      consentGranted: Object.values(consents.consents || {}).filter(Boolean).length
+    };
+  } catch {
+    // Opportunity context is non-critical; mentor still functions without it
+  }
+
   return {
     learnerName: user?.name || 'Student',
     academicLevel: profile?.academicLevel || 'Intermediate',
@@ -149,6 +241,14 @@ export async function buildStudentLearningContext(userId, options = {}) {
     recommendedNextAction: nextAction,
     groundedKnowledge: groundedKnowledge || (currentLesson ? `Lesson "${currentLesson.title}": ${currentLesson.description || currentLesson.summary || 'Core concept lesson'}` : null),
     knowledgeAvailable: Boolean(groundedKnowledge || currentLesson),
-    sources: knowledgeSources.length > 0 ? knowledgeSources : [currentCourse?.title, currentLesson?.title].filter(Boolean)
+    sources: knowledgeSources.length > 0 ? knowledgeSources : [currentCourse?.title, currentLesson?.title].filter(Boolean),
+    // Phase 12 Career Intelligence context
+    careerContext,
+    // Phase 13 Project & Portfolio Intelligence context
+    projectContext,
+    // Phase 14 Collaboration & Mentorship context
+    collaborationContext,
+    // Phase 15 Global Opportunity context
+    opportunityContext
   };
 }

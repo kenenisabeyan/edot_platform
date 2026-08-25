@@ -1,15 +1,38 @@
 /**
- * EDOT Intelligence Domain - Project & Portfolio Intelligence Service
- * Handles project recommendations based on skill gaps, AI milestone guidance,
- * artifact submissions with explicit verification labels (AI_CONCEPTUAL_FEEDBACK vs HUMAN_VERIFIED),
- * and student portfolio assembly.
+ * EDOT Intelligence Domain - Project & Portfolio Intelligence Master Orchestrator
+ * Coordinates project recommendations, milestone intelligence, formative AI feedback,
+ * versioned revision history, team contributions, portfolio publication, and instructor/admin insights.
  */
 
 import { prisma } from '../../../lib/prisma.js';
-import { NotFoundError } from '../shared/errors.js';
+import { assertValidUUID, assertStudentOwnsProjectData, assertGuardianStudentLink, sanitizeGuardianProjectView } from './projectAuthorizationService.js';
+import { recordProjectEvidence, getStudentProjectEvidences } from './projectEvidenceEngine.js';
+import { createProjectRevision, getSubmissionRevisionHistory } from './revisionIntelligenceService.js';
+import { getPersonalizedProjectRecommendations, updateMilestoneProgress } from './projectPlannerService.js';
+import { generateAiProjectFeedback, reviewProjectByInstructor } from './projectFeedbackService.js';
+import { getPortfolioIntelligence, updatePortfolioProjectProfile, removePortfolioItem } from './portfolioIntelligenceService.js';
+import { registerTeamSubmission, getIndividualTeamContribution } from './teamProjectService.js';
+
+export {
+  assertValidUUID,
+  assertStudentOwnsProjectData,
+  recordProjectEvidence,
+  getStudentProjectEvidences,
+  createProjectRevision,
+  getSubmissionRevisionHistory,
+  getPersonalizedProjectRecommendations,
+  updateMilestoneProgress,
+  generateAiProjectFeedback,
+  reviewProjectByInstructor,
+  getPortfolioIntelligence,
+  updatePortfolioProjectProfile,
+  removePortfolioItem,
+  registerTeamSubmission,
+  getIndividualTeamContribution
+};
 
 /**
- * Seeds catalog of project challenges.
+ * Seeds catalog of project challenges if empty.
  */
 export async function seedProjectCatalog() {
   const count = await prisma.project.count();
@@ -22,11 +45,12 @@ export async function seedProjectCatalog() {
         description: 'Build a mobile-first e-commerce frontend using Flexbox, CSS Grid, and React.',
         category: 'Web Development',
         difficulty: 'INTERMEDIATE',
+        projectType: 'PORTFOLIO_PROJECT',
         requiredSkills: ['HTML', 'CSS Grid', 'Flexbox', 'React'],
         milestones: [
-          { step: 1, title: 'Build responsive grid product gallery' },
-          { step: 2, title: 'Implement dynamic cart state management' },
-          { step: 3, title: 'Deploy live demo to Vercel/Netlify' }
+          { id: 'm1', step: 1, title: 'Build responsive grid product gallery', status: 'NOT_STARTED' },
+          { id: 'm2', step: 2, title: 'Implement dynamic cart state management', status: 'NOT_STARTED' },
+          { id: 'm3', step: 3, title: 'Deploy live demo to Vercel/Netlify', status: 'NOT_STARTED' }
         ]
       },
       {
@@ -34,11 +58,12 @@ export async function seedProjectCatalog() {
         description: 'Build a full-stack dashboard communicating with REST APIs and AI endpoints.',
         category: 'Software Engineering',
         difficulty: 'ADVANCED',
+        projectType: 'SKILL_PROJECT',
         requiredSkills: ['JavaScript', 'Node.js', 'Express', 'REST APIs'],
         milestones: [
-          { step: 1, title: 'Design RESTful API server with error boundaries' },
-          { step: 2, title: 'Connect AI provider adapter with fallback logic' },
-          { step: 3, title: 'Write comprehensive integration tests' }
+          { id: 'm1', step: 1, title: 'Design RESTful API server with error boundaries', status: 'NOT_STARTED' },
+          { id: 'm2', step: 2, title: 'Connect AI provider adapter with fallback logic', status: 'NOT_STARTED' },
+          { id: 'm3', step: 3, title: 'Write comprehensive integration tests', status: 'NOT_STARTED' }
         ]
       }
     ]
@@ -46,22 +71,10 @@ export async function seedProjectCatalog() {
 }
 
 /**
- * Returns project recommendations based on student skill gaps.
+ * Backward compatible alias for project recommendations.
  */
 export async function getRecommendedProjects(userId) {
-  await seedProjectCatalog();
-  const projects = await prisma.project.findMany();
-
-  return projects.map(p => ({
-    projectId: p.id,
-    title: p.title,
-    description: p.description,
-    category: p.category,
-    difficulty: p.difficulty,
-    requiredSkills: p.requiredSkills,
-    milestones: p.milestones,
-    matchReason: `Recommended to strengthen demonstrated ability in ${Array.isArray(p.requiredSkills) ? p.requiredSkills.join(', ') : 'core skills'}`
-  }));
+  return getPersonalizedProjectRecommendations(userId);
 }
 
 /**
@@ -70,7 +83,7 @@ export async function getRecommendedProjects(userId) {
 export async function getAiProjectMilestones(projectId) {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) {
-    throw new NotFoundError('Project not found');
+    throw new Error('Project not found');
   }
 
   return {
@@ -83,19 +96,16 @@ export async function getAiProjectMilestones(projectId) {
 }
 
 /**
- * Submits a project artifact and triggers AI conceptual review.
+ * Backward compatible artifact submission method.
  */
-export async function submitProjectArtifact(userId, { projectId, repoUrl = null, liveDemoUrl = null }) {
+export async function submitProjectArtifact(userId, { projectId, repoUrl = null, liveDemoUrl = null, selfReflection = null }) {
+  assertValidUUID(userId, 'userId');
+  assertValidUUID(projectId, 'projectId');
+
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) {
-    throw new NotFoundError('Project not found');
+    throw new Error('Project not found');
   }
-
-  const aiFeedback = {
-    completenessScore: 88,
-    conceptualNotes: 'Repository contains clean modular components and proper responsive CSS rules.',
-    verificationDisclaimer: 'AI Conceptual Feedback (Non-Verification). Final proof requires instructor review or automated build verification.'
-  };
 
   const submission = await prisma.projectSubmission.create({
     data: {
@@ -103,45 +113,22 @@ export async function submitProjectArtifact(userId, { projectId, repoUrl = null,
       projectId,
       repoUrl,
       liveDemoUrl,
-      aiReviewFeedback: aiFeedback,
+      selfReflection,
+      status: 'SUBMITTED',
       verificationType: 'AI_CONCEPTUAL_FEEDBACK',
       isVerified: false
     }
   });
 
-  // Ensure LearnerSkill exists for foreign key constraint
-  let profile = await prisma.learnerProfile.findUnique({ where: { userId } });
-  if (!profile) {
-    profile = await prisma.learnerProfile.create({ data: { userId } });
-  }
-
-  let learnerSkill = await prisma.learnerSkill.findFirst({
-    where: { profileId: profile.id, name: 'Web Development' }
-  });
-
-  if (!learnerSkill) {
-    learnerSkill = await prisma.learnerSkill.create({
-      data: {
-        userId,
-        profileId: profile.id,
-        name: 'Web Development',
-        proficiencyLevel: 'intermediate',
-        masteryScore: 88
-      }
-    });
-  }
-
-  // Automatically record evidence item
-  await prisma.skillEvidence.create({
-    data: {
-      userId,
-      skillId: learnerSkill.id,
-      evidenceType: 'PROJECT_ARTIFACT',
-      sourceId: submission.id,
-      title: `Submitted Project: ${project.title}`,
-      score: 88,
-      verificationLevel: 'AI_REVIEWED'
-    }
+  // Record initial submission evidence
+  await recordProjectEvidence(userId, {
+    projectId,
+    submissionId: submission.id,
+    sourceType: 'PROJECT_SUBMISSION',
+    sourceEntityId: submission.id,
+    confidence: 0.8,
+    evidenceStrength: 'DEVELOPING',
+    metadata: { selfReflection }
   });
 
   return {
@@ -149,127 +136,98 @@ export async function submitProjectArtifact(userId, { projectId, repoUrl = null,
     projectTitle: project.title,
     repoUrl: submission.repoUrl,
     liveDemoUrl: submission.liveDemoUrl,
+    status: submission.status,
     verificationType: submission.verificationType,
     isVerified: submission.isVerified,
-    aiReviewFeedback: submission.aiReviewFeedback,
     createdAt: submission.createdAt
   };
 }
 
 /**
- * Retrieves student portfolio items and missing evidence alerts.
+ * Backward compatible portfolio retrieval.
  */
 export async function getLearnerPortfolio(userId) {
-  const portfolioItems = await prisma.portfolioItem.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' }
-  });
-
-  const missingEvidenceAlerts = portfolioItems.length === 0 ? [
-    {
-      skill: 'Full-Stack Integration',
-      alert: 'Missing verified project portfolio artifact. Complete "Responsive E-Commerce Storefront" to add verified proof to your Skill Passport.'
-    }
-  ] : [];
-
+  const intel = await getPortfolioIntelligence(userId);
   return {
     userId,
-    portfolioCount: portfolioItems.length,
-    portfolioItems: portfolioItems.map(item => ({
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      demonstratedSkills: item.demonstratedSkills,
-      publicUrl: item.publicUrl,
-      verificationStatus: item.verificationStatus,
-      createdAt: item.createdAt
-    })),
-    missingEvidenceAlerts
+    portfolioCount: intel.portfolioCount,
+    portfolioItems: intel.portfolioItems,
+    missingEvidenceAlerts: intel.portfolioSuggestions.map(s => ({
+      skill: s.title,
+      alert: s.suggestionMessage
+    }))
   };
 }
 
 /**
- * Objective instructor verification of a project submission.
+ * Aggregate project progress insights for instructors (Phase 4 extension).
  */
-export async function reviewProjectByInstructor(submissionId, instructorId, approved = true, notes = '') {
-  const submission = await prisma.projectSubmission.findUnique({
-    where: { id: submissionId },
-    include: { project: true }
-  });
+export async function getInstructorProjectInsights(instructorId) {
+  assertValidUUID(instructorId, 'instructorId');
 
-  if (!submission) {
-    throw new NotFoundError('Project submission not found');
-  }
-
-  const instructorReview = {
-    approved,
-    reviewedBy: instructorId,
-    notes,
-    reviewedAt: new Date().toISOString()
-  };
-
-  const updatedSubmission = await prisma.projectSubmission.update({
-    where: { id: submissionId },
-    data: {
-      instructorReview,
-      verificationType: approved ? 'HUMAN_VERIFIED' : 'AI_CONCEPTUAL_FEEDBACK',
-      isVerified: approved
+  const submissions = await prisma.projectSubmission.findMany({
+    take: 50,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      project: { select: { id: true, title: true, category: true } }
     }
   });
 
-  let portfolioItem = null;
-  if (approved) {
-    portfolioItem = await prisma.portfolioItem.create({
-      data: {
-        userId: submission.userId,
-        submissionId: submission.id,
-        title: submission.project.title,
-        description: submission.project.description,
-        demonstratedSkills: submission.project.requiredSkills,
-        publicUrl: submission.liveDemoUrl || submission.repoUrl,
-        verificationStatus: 'HUMAN_VERIFIED'
-      }
-    });
-
-    let profile = await prisma.learnerProfile.findUnique({ where: { userId: submission.userId } });
-    if (!profile) {
-      profile = await prisma.learnerProfile.create({ data: { userId: submission.userId } });
-    }
-
-    let learnerSkill = await prisma.learnerSkill.findFirst({
-      where: { profileId: profile.id, name: 'Web Development' }
-    });
-
-    if (!learnerSkill) {
-      learnerSkill = await prisma.learnerSkill.create({
-        data: {
-          userId: submission.userId,
-          profileId: profile.id,
-          name: 'Web Development',
-          proficiencyLevel: 'advanced',
-          masteryScore: 95
-        }
-      });
-    }
-
-    await prisma.skillEvidence.create({
-      data: {
-        userId: submission.userId,
-        skillId: learnerSkill.id,
-        evidenceType: 'INSTRUCTOR_EVALUATION',
-        sourceId: portfolioItem.id,
-        title: `Instructor Verified Project: ${submission.project.title}`,
-        score: 95,
-        verificationLevel: 'HUMAN_VERIFIED'
-      }
-    });
-  }
+  const pendingReviewCount = submissions.filter(s => s.status === 'SUBMITTED' || s.status === 'UNDER_REVIEW').length;
+  const verifiedCount = submissions.filter(s => s.isVerified).length;
 
   return {
-    submissionId: updatedSubmission.id,
-    verificationType: updatedSubmission.verificationType,
-    isVerified: updatedSubmission.isVerified,
-    instructorReview: updatedSubmission.instructorReview,
-    portfolioItem
+    instructorId,
+    totalSubmissions: submissions.length,
+    pendingReviewCount,
+    verifiedCount,
+    recentSubmissions: submissions.slice(0, 10).map(s => ({
+      submissionId: s.id,
+      studentName: s.user.name,
+      projectTitle: s.project.title,
+      status: s.status,
+      isVerified: s.isVerified,
+      createdAt: s.createdAt
+    }))
+  };
+}
+
+/**
+ * Aggregate institutional project intelligence for admins (Phase 5 extension).
+ */
+export async function getAdminProjectIntelligence() {
+  const totalProjects = await prisma.project.count();
+  const totalSubmissions = await prisma.projectSubmission.count();
+  const verifiedSubmissions = await prisma.projectSubmission.count({ where: { isVerified: true } });
+  const portfolioCount = await prisma.portfolioItem.count();
+
+  return {
+    totalProjects,
+    totalSubmissions,
+    verifiedSubmissions,
+    portfolioCount,
+    verificationRate: totalSubmissions > 0 ? (verifiedSubmissions / totalSubmissions) * 100 : 0,
+    generatedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Privacy-safe project overview for guardians (Phase 6 extension).
+ */
+export async function getGuardianProjectSummary(guardianId, studentId) {
+  await assertGuardianStudentLink(guardianId, studentId);
+
+  const submissions = await prisma.projectSubmission.findMany({
+    where: { userId: studentId },
+    include: { project: true },
+    orderBy: { updatedAt: 'desc' }
+  });
+
+  return {
+    studentId,
+    projectCount: submissions.length,
+    verifiedProjectCount: submissions.filter(s => s.isVerified).length,
+    projects: sanitizeGuardianProjectView(submissions)
   };
 }

@@ -136,6 +136,41 @@ model User {
   conceptMasteries     LearnerConceptMastery[] @relation("UserConceptMasteries")
   conceptPracticeSessions PracticeSession[]   @relation("UserConceptPracticeSessions")
   studentLearningPlans StudentLearningPlan[]  @relation("UserLearningPlans")
+
+  // Phase 12 — Career Intelligence relations
+  careerInterests      LearnerCareerInterest[] @relation("UserCareerInterests")
+  careerGoals          CareerGoal[]            @relation("UserCareerGoals")
+
+  // Phase 13 — Real-World Experience, Project & Portfolio Intelligence relations
+  projectEvidences     ProjectEvidence[]       @relation("UserProjectEvidences")
+
+  // Phase 14 — Human, Mentorship & Collaborative Intelligence relations
+  mentorProfile        MentorProfile?
+  peerDiscoverability  PeerDiscoverability?
+  relationshipsSent    UserRelationship[]      @relation("RelationshipRequester")
+  relationshipsReceived UserRelationship[]     @relation("RelationshipTarget")
+  communityMemberships CommunityMember[]       @relation("UserCommunityMemberships")
+  createdCommunities   Community[]             @relation("UserCreatedCommunities")
+  blocksAndReportsSent UserBlockReport[]       @relation("UserBlockReporter")
+  blocksAndReportsReceived UserBlockReport[]   @relation("UserBlockTarget")
+
+  // Phase 15 — Global Opportunity & Ecosystem Intelligence relations
+  opportunityApplications OpportunityApplication[] @relation("UserOpportunityApplications")
+  studentConsents         StudentConsent[]         @relation("UserStudentConsents")
+  opportunityInteractions OpportunityInteraction[] @relation("UserOpportunityInteractions")
+
+  // Phase 17 — Product Experience Audit relations
+  productExperienceEvents ProductExperienceEvent[] @relation("UserProductExperienceEvents")
+  recommendationFeedbacks RecommendationFeedback[] @relation("UserRecommendationFeedbacks")
+  aiMentorFeedbacks       AIMentorFeedback[]       @relation("UserAIMentorFeedbacks")
+
+  // Phase 18 — Real-World Pilot & Learner Validation relations
+  pilotParticipations     PilotParticipant[]       @relation("UserPilotParticipations")
+  pilotFeedbacks          PilotFeedback[]          @relation("UserPilotFeedbacks")
+
+  // Phase 19 — AI Quality, Safety & Evaluation relations
+  aiInteractions          AIInteraction[]          @relation("UserAIInteractions")
+  aiQualityFeedbacks      AIFeedback[]             @relation("UserAIFeedbacks")
 }
 
 model LearnerProfile {
@@ -514,6 +549,7 @@ model Course {
   practiceSessions   PracticeSession[]       @relation("CoursePracticeSessions")
   questionIntelligence QuestionIntelligence[] @relation("CourseQuestionIntelligence")
   studentLearningPlans StudentLearningPlan[]  @relation("CourseLearningPlans")
+  projects             Project[]              @relation("CourseProjects")
 }
 
 model Lesson {
@@ -1534,23 +1570,39 @@ model CourseIntelligenceSnapshot {
 model Opportunity {
   id                    String                   @id @default(uuid())
   title                 String
-  type                  String
+  type                  String                   @default("OTHER") // legacy type field
+  opportunityType       String?                  @default("OTHER") // JOB | INTERNSHIP | APPRENTICESHIP | SCHOLARSHIP | FELLOWSHIP | BOOTCAMP | COMPETITION | HACKATHON | RESEARCH_OPPORTUNITY | VOLUNTEERING | PROJECT_COLLABORATION | MENTORSHIP_PROGRAM | ENTREPRENEURSHIP_PROGRAM | OTHER
   organization          String
   location              String?
+  locationType          String?                  @default("REMOTE") // REMOTE | HYBRID | ON_SITE
   description           String
   applyUrl              String?
+  applicationUrl        String?
   deadline              DateTime?
+  publishedAt           DateTime                 @default(now())
   isVerified            Boolean                  @default(true)
   status                String                   @default("active")
+  
+  sourceId              String?
+  source                OpportunitySource?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  partnerId             String?
+  partner               PartnerOrganization?     @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  skillRequirements     Json?
+  
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
 
   requirements          OpportunityRequirement[]
   learnerMatches        LearnerOpportunityMatch[]
   recommendations       OpportunityRecommendation[]
+  applications          OpportunityApplication[]
+  interactions          OpportunityInteraction[]
 
   @@index([type])
+  @@index([opportunityType])
   @@index([status])
+  @@index([sourceId])
+  @@index([partnerId])
 }
 
 model OpportunityRequirement {
@@ -1644,17 +1696,24 @@ model SkillPassport {
 model CareerPath {
   id               String                @id @default(uuid())
   title            String                @unique
+  normalizedName   String?               // lowercase slug for dedup; nullable for backward compat
   category         String
+  industry         String?               // e.g. "Technology", "Healthcare", "Finance"
   description      String
-  requiredSkills   Json
+  requiredSkills   Json                  // preserved for backward compatibility (JSON blob)
   avgSalaryRange   String?
   demandLevel      String                @default("HIGH")
+  status           String                @default("ACTIVE") // ACTIVE | ARCHIVED
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
   learnerTargets   LearnerCareerTarget[]
+  skillRequirements CareerPathSkillRequirement[]
+  careerGoals      CareerGoal[]
 
   @@index([category])
+  @@index([normalizedName])
+  @@index([status])
 }
 
 model LearnerCareerTarget {
@@ -1746,6 +1805,10 @@ model SkillNode {
   outgoingRelations SkillRelationship[] @relation("SourceSkill")
   incomingRelations SkillRelationship[] @relation("TargetSkill")
   courseMappings    CourseSkillMapping[]
+
+  // Phase 12 — Career Intelligence
+  knowledgeNodeMappings    KnowledgeNodeSkillMapping[]
+  careerPathRequirements   CareerPathSkillRequirement[]
 
   @@index([domain])
   @@index([category])
@@ -1951,13 +2014,23 @@ model Project {
   difficulty       String              @default("INTERMEDIATE")
   requiredSkills   Json
   milestones       Json
+  projectType      String              @default("SKILL_PROJECT") // ACADEMIC_PROJECT | SKILL_PROJECT | PERSONAL_PROJECT | TEAM_PROJECT | PORTFOLIO_PROJECT | CHALLENGE
+  courseId         String?
+  course           Course?             @relation("CourseProjects", fields: [courseId], references: [id], onDelete: SetNull)
+  creatorId        String?
+  status           String              @default("ACTIVE") // ACTIVE | ARCHIVED
+  linkedKnowledgeNodeIds String[]       @default([])
+  linkedSkillNodeIds     String[]       @default([])
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
   submissions      ProjectSubmission[]
+  evidences        ProjectEvidence[]
 
   @@index([category])
   @@index([difficulty])
+  @@index([projectType])
+  @@index([status])
 }
 
 model ProjectSubmission {
@@ -1972,13 +2045,26 @@ model ProjectSubmission {
   instructorReview   Json?
   verificationType   String          @default("AI_CONCEPTUAL_FEEDBACK")
   isVerified         Boolean         @default(false)
+  status             String          @default("SUBMITTED") // IDEA | PLANNING | IN_PROGRESS | SUBMITTED | UNDER_REVIEW | FEEDBACK_RECEIVED | REVISION_REQUESTED | COMPLETED | ARCHIVED
+  submissionVersion  Int             @default(1)
+  previousSubmissionId String?
+  previousSubmission ProjectSubmission? @relation("SubmissionRevisions", fields: [previousSubmissionId], references: [id], onDelete: SetNull)
+  revisions          ProjectSubmission[] @relation("SubmissionRevisions")
+  milestoneProgress  Json?
+  selfReflection     Json?
+  teamMembers        Json?
+  score              Float?
+  improvementSummary String?
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
   portfolioItems     PortfolioItem[]
+  evidences          ProjectEvidence[]
 
   @@index([userId])
   @@index([projectId])
+  @@index([status])
+  @@index([submissionVersion])
 }
 
 model PortfolioItem {
@@ -1992,10 +2078,44 @@ model PortfolioItem {
   demonstratedSkills Json
   publicUrl          String?
   verificationStatus String            @default("HUMAN_VERIFIED")
+  projectRole        String?
+  learningContext    String?
+  evidenceSummary    String?
+  visibility         String            @default("PRIVATE") // PRIVATE | COURSE_PEERS | TEAM_ONLY | PUBLIC_WITH_CONSENT
+  publishedAt        DateTime?
   createdAt          DateTime          @default(now())
 
   @@index([userId])
   @@index([submissionId])
+  @@index([visibility])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 13 — Real-World Experience & Capability Evidence Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Traceable Project Evidence ledger bridging project work to Skill Evidence
+model ProjectEvidence {
+  id               String            @id @default(uuid())
+  studentId        String
+  user             User              @relation("UserProjectEvidences", fields: [studentId], references: [id], onDelete: Cascade)
+  projectId        String
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submissionId     String?
+  submission       ProjectSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  skillId          String?
+  knowledgeNodeId  String?
+  sourceType       String            // PROJECT_SUBMISSION | INSTRUCTOR_EVALUATION | PEER_FEEDBACK | SELF_REFLECTION | REVISION_COMPLETED | DEMONSTRATED_SKILL
+  sourceEntityId   String?
+  confidence       Float             @default(0.8)
+  evidenceStrength String            @default("DEVELOPING") // NOT_STARTED | EXPLORING | DEVELOPING | DEMONSTRATING | STRONG_EVIDENCE
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+
+  @@index([studentId])
+  @@index([projectId])
+  @@index([submissionId])
+  @@index([sourceType])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2168,6 +2288,9 @@ model KnowledgeNode {
   conceptMasteries  LearnerConceptMastery[]
   practiceSessions  PracticeSession[]       @relation("NodePracticeSessions")
   masteryEvidence   MasteryEvidence[]
+
+  // Phase 12 — Career Intelligence
+  skillMappings     KnowledgeNodeSkillMapping[]
 
   @@index([normalizedName])
   @@index([type])
@@ -2388,4 +2511,780 @@ model PersonalizedLearningAction {
   @@index([actionType])
   @@index([status])
 }
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Phase 12 — Career, Skill & Opportunity Intelligence Models
+// ───────────────────────────────────────────────────────────────────────────────
+
+/// Explicit career interest tracking with lifecycle support.
+/// Separate from LearnerInterest (generic topic/category) — career-specific.
+model LearnerCareerInterest {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation("UserCareerInterests", fields: [userId], references: [id], onDelete: Cascade)
+  careerPathId String?  // optional — may be free-text interest without a defined CareerPath
+  interestText String   // "Data Science", "Cybersecurity", free text
+  source       String   @default("EXPLICIT") // EXPLICIT | INFERRED
+  status       String   @default("ACTIVE")   // ACTIVE | PAUSED | ARCHIVED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Bridge between Phase 8 KnowledgeNodes and Phase 12 SkillNodes.
+/// When a student masters a KnowledgeNode, the linked SkillNode can receive evidence.
+model KnowledgeNodeSkillMapping {
+  id              String        @id @default(uuid())
+  knowledgeNodeId String
+  knowledgeNode   KnowledgeNode @relation(fields: [knowledgeNodeId], references: [id], onDelete: Cascade)
+  skillNodeId     String
+  skillNode       SkillNode     @relation(fields: [skillNodeId], references: [id], onDelete: Cascade)
+  evidenceWeight  Float         @default(1.0) // how strongly mastery of this concept contributes to the skill
+  createdAt       DateTime      @default(now())
+
+  @@unique([knowledgeNodeId, skillNodeId])
+  @@index([knowledgeNodeId])
+  @@index([skillNodeId])
+}
+
+/// Relational skill requirements for a career path (replaces JSON blob for new paths).
+/// Both this and CareerPath.requiredSkills are supported simultaneously.
+model CareerPathSkillRequirement {
+  id           String     @id @default(uuid())
+  careerPathId String
+  careerPath   CareerPath @relation(fields: [careerPathId], references: [id], onDelete: Cascade)
+  skillNodeId  String?    // optional link to SkillNode graph
+  skillNode    SkillNode? @relation(fields: [skillNodeId], references: [id], onDelete: SetNull)
+  skillName    String     // dynamic text — does not require SkillNode to exist
+  importance   String     @default("IMPORTANT") // FOUNDATIONAL | IMPORTANT | ADVANCED | OPTIONAL
+  createdAt    DateTime   @default(now())
+
+  @@index([careerPathId])
+  @@index([skillNodeId])
+}
+
+/// Student career goal with full lifecycle support.
+model CareerGoal {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation("UserCareerGoals", fields: [userId], references: [id], onDelete: Cascade)
+  careerPathId String?
+  careerPath   CareerPath? @relation(fields: [careerPathId], references: [id], onDelete: SetNull)
+  title        String
+  type         String     @default("EXPLORE") // EXPLORE | DEVELOP | PREPARE
+  status       String     @default("ACTIVE")  // ACTIVE | PAUSED | ARCHIVED
+  targetDate   DateTime?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([careerPathId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 14 — Human, Mentorship & Collaborative Intelligence Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Verified Mentor Profile store
+model MentorProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headline              String?
+  bio                   String?
+  expertiseAreas        Json?    // Array of skill/domain strings
+  skills                Json?    // Array of skill objects
+  experienceSummary     String?
+  languages             Json?    // Array of language strings
+  availability          Json?    // Available days/hours structure
+  mentorshipPreferences Json?    // Preferred focus areas / styles
+  maxMenteeCapacity     Int      @default(5)
+  visibilityStatus      String   @default("EDOT_USERS") // PRIVATE | EDOT_USERS | PROGRAM_ONLY | PUBLIC
+  verificationStatus    String   @default("UNVERIFIED") // UNVERIFIED | PENDING_REVIEW | VERIFIED | SUSPENDED | REJECTED
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+  @@index([verificationStatus])
+  @@index([visibilityStatus])
+}
+
+/// Explicit human learning relationships (Mentorship, Peer, Collaboration)
+model UserRelationship {
+  id               String           @id @default(uuid())
+  requesterId      String
+  requester        User             @relation("RelationshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  targetId         String
+  target           User             @relation("RelationshipTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  relationshipType String           // MENTOR | MENTEE | PEER | COLLABORATOR | TEAM_MEMBER | PROJECT_ADVISOR | CAREER_SUPPORTER
+  status           String           @default("PENDING") // PENDING | ACTIVE | PAUSED | COMPLETED | DECLINED | REVOKED | BLOCKED
+  focusAreas       Json?
+  notes            String?
+  acceptedAt       DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  goals            MentorshipGoal[]
+  sessions         MentorshipSession[]
+
+  @@unique([requesterId, targetId, relationshipType])
+  @@index([requesterId])
+  @@index([targetId])
+  @@index([relationshipType])
+  @@index([status])
+}
+
+/// Mentorship Goal tracking
+model MentorshipGoal {
+  id             String           @id @default(uuid())
+  relationshipId String
+  relationship   UserRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  title          String
+  category       String           @default("GENERAL_GUIDANCE") // SKILL_DEVELOPMENT | PROJECT_GUIDANCE | CAREER_EXPLORATION | PORTFOLIO_FEEDBACK | ACADEMIC_SUPPORT | GENERAL_GUIDANCE
+  status         String           @default("ACTIVE") // ACTIVE | COMPLETED | PAUSED
+  progress       Float            @default(0.0)
+  targetDate     DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([relationshipId])
+  @@index([status])
+}
+
+/// Mentorship Sessions & Action Items
+model MentorshipSession {
+  id              String           @id @default(uuid())
+  relationshipId  String
+  relationship    UserRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  scheduledAt     DateTime
+  durationMinutes Int              @default(60)
+  status          String           @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED | NO_SHOW
+  meetingLink     String?
+  actionItems     Json?            // Array of { description, owner, dueDate, status }
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([relationshipId])
+  @@index([status])
+}
+
+/// Peer Discoverability & Opt-In Settings
+model PeerDiscoverability {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  optIn          Boolean  @default(false)
+  visibility     String   @default("NOT_DISCOVERABLE") // NOT_DISCOVERABLE | COURSE_ONLY | SKILL_MATCHING | PROJECT_COLLABORATION
+  studyGoals     Json?
+  availableHours Json?
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
+  @@index([visibility])
+}
+
+/// Controlled Study, Skill, Course & Career Communities
+model Community {
+  id           String            @id @default(uuid())
+  name         String
+  slug         String            @unique
+  description  String
+  type         String            @default("SKILL_COMMUNITIES") // STUDY_GROUPS | PROJECT_GROUPS | SKILL_COMMUNITIES | COURSE_COMMUNITIES | CAREER_COMMUNITIES
+  accessType   String            @default("OPEN") // OPEN | REQUEST_REQUIRED | INVITATION_ONLY | PRIVATE
+  courseId     String?
+  creatorId    String
+  creator      User              @relation("UserCreatedCommunities", fields: [creatorId], references: [id], onDelete: Cascade)
+  status       String            @default("ACTIVE")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  members      CommunityMember[]
+
+  @@index([type])
+  @@index([accessType])
+  @@index([status])
+}
+
+/// Community Member membership store
+model CommunityMember {
+  id          String    @id @default(uuid())
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("UserCommunityMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role        String    @default("MEMBER") // MEMBER | MODERATOR | ADMIN
+  status      String    @default("ACTIVE") // ACTIVE | PENDING | REJECTED | BLOCKED
+  joinedAt    DateTime  @default(now())
+
+  @@unique([communityId, userId])
+  @@index([communityId])
+  @@index([userId])
+  @@index([status])
+}
+
+/// Safety Blocking and Reporting store
+model UserBlockReport {
+  id          String   @id @default(uuid())
+  reporterId  String
+  reporter    User     @relation("UserBlockReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetId    String
+  target      User     @relation("UserBlockTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  type        String   // BLOCK | REPORT
+  reason      String?
+  status      String   @default("ACTIVE") // ACTIVE | RESOLVED | DISMISSED
+  createdAt   DateTime @default(now())
+
+  @@unique([reporterId, targetId, type])
+  @@index([reporterId])
+  @@index([targetId])
+  @@index([type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 15 — Global Opportunity & Ecosystem Intelligence Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Partner Organization ecosystem store
+model PartnerOrganization {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  description  String?
+  websiteUrl   String?
+  logoUrl      String?
+  status       String        @default("PENDING") // PENDING | ACTIVE | PAUSED | SUSPENDED
+  contactEmail String?
+  verifiedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  sources      OpportunitySource[]
+  opportunities Opportunity[]
+
+  @@index([status])
+}
+
+/// Abstract Opportunity Provider/Source store
+model OpportunitySource {
+  id               String               @id @default(uuid())
+  name             String
+  sourceType       String               @default("EDOT_CREATED") // EDOT_CREATED | PARTNER_PROVIDED | EXTERNAL_PROVIDER | MANUAL_IMPORT | USER_SUBMITTED
+  partnerId        String?
+  partner          PartnerOrganization? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  sourceReference  String?
+  confidenceStatus String               @default("UNVERIFIED") // VERIFIED | PARTNER | UNVERIFIED | UNDER_REVIEW | EXPIRED | REMOVED
+  metadata         Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  opportunities    Opportunity[]
+
+  @@index([sourceType])
+  @@index([confidenceStatus])
+  @@index([partnerId])
+}
+
+
+/// Student Application Tracking store
+model OpportunityApplication {
+  id               String      @id @default(uuid())
+  userId           String
+  user             User        @relation("UserOpportunityApplications", fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId    String
+  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  status           String      @default("SAVED") // SAVED | PREPARING | READY | APPLIED | INTERVIEW | ASSESSMENT | OFFER | ACCEPTED | DECLINED | WITHDRAWN | CLOSED
+  preparationNotes Json?       // Log of prep activities (lessons, projects, mentor reviews)
+  appliedAt        DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([userId, opportunityId])
+  @@index([userId])
+  @@index([opportunityId])
+  @@index([status])
+}
+
+/// Explicit Student Consent management
+model StudentConsent {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation("UserStudentConsents", fields: [userId], references: [id], onDelete: Cascade)
+  consentType String    // PORTFOLIO_SHARING | PROJECT_SHARING | PROFILE_SHARING | APPLICATION_PREPARATION | PARTNER_DISCOVERY
+  granted     Boolean   @default(false)
+  grantedAt   DateTime?
+  revokedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, consentType])
+  @@index([userId])
+  @@index([consentType])
+}
+
+/// Recommendation Feedback Loop & Interaction Store
+model OpportunityInteraction {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation("UserOpportunityInteractions", fields: [userId], references: [id], onDelete: Cascade)
+  opportunityId   String
+  opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  interactionType String      // INTERESTED | NOT_INTERESTED | SAVED | PREPARING | APPLIED | DISMISSED
+  createdAt       DateTime    @default(now())
+
+  @@index([userId])
+  @@index([opportunityId])
+  @@index([interactionType])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 17 — Product Experience Audit & Intelligence Validation Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Privacy-conscious Product Experience Telemetry & Friction Store
+model ProductExperienceEvent {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation("UserProductExperienceEvents", fields: [userId], references: [id], onDelete: Cascade)
+  eventType  String   // DISCOVERED | USED | ACTIONED | COMPLETED | RETURNED_TO | DISMISSED | ABANDONED | FRICTION_SIGNAL
+  featureKey String   // NEXT_BEST_STEP | AI_MENTOR | SKILLS_PASSPORT | PROJECTS | PORTFOLIO | CAREER | OPPORTUNITIES
+  journeyKey String?  // ONBOARDING | RETURNING | REMEDIATION | MENTOR_CHAT | SKILL_BUILDING | PORTFOLIO_PUB | CAREER_DISCOVERY | OPPORTUNITY_PREP | HUMAN_SUPPORT
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([featureKey])
+  @@index([journeyKey])
+}
+
+/// Student Recommendation Feedback ledger
+model RecommendationFeedback {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation("UserRecommendationFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  recommendationId String
+  feedbackType     String   // HELPFUL | NOT_NOW | NOT_RELEVANT | ALREADY_DONE | SHOW_FEWER
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([recommendationId])
+  @@index([feedbackType])
+}
+
+/// Lightweight AI Mentor Quality Feedback ledger
+model AIMentorFeedback {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation("UserAIMentorFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  messageId      String
+  rating         String   // HELPFUL | NOT_HELPFUL
+  reasonCategory String?  // TOO_COMPLICATED | DIDNT_ANSWER | NEED_EXAMPLE | NEED_MORE_DETAIL | NOT_RELATED
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([messageId])
+  @@index([rating])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 18 — Real-World Pilot & Learner Validation Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Pilot Program Management store
+model PilotProgram {
+  id               String             @id @default(uuid())
+  name             String
+  description      String
+  status           String             @default("DRAFT") // DRAFT | READY | ACTIVE | PAUSED | COMPLETED | ARCHIVED
+  targetAudience   String?
+  goals            String?
+  successCriteria  String?
+  createdBy        String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  cohorts          PilotCohort[]
+  participants     PilotParticipant[]
+  feedbacks        PilotFeedback[]
+  issues           PilotIssue[]
+  hypotheses       PilotHypothesis[]
+
+  @@index([status])
+}
+
+/// Dynamic Pilot Cohorts
+model PilotCohort {
+  id             String             @id @default(uuid())
+  pilotProgramId String
+  pilotProgram   PilotProgram       @relation(fields: [pilotProgramId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  createdAt      DateTime           @default(now())
+
+  participants   PilotParticipant[]
+
+  @@index([pilotProgramId])
+}
+
+/// Pilot Participant Opt-In Ledger (Reuses existing User IDs)
+model PilotParticipant {
+  id             String       @id @default(uuid())
+  pilotProgramId String
+  pilotProgram   PilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Cascade)
+  cohortId       String?
+  cohort         PilotCohort? @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  userId         String
+  user           User         @relation("UserPilotParticipations", fields: [userId], references: [id], onDelete: Cascade)
+  status         String       @default("ACTIVE") // INVITED | ACTIVE | WITHDRAWN | COMPLETED | REMOVED
+  consentVersion String       @default("v1.0")
+  acceptedAt     DateTime     @default(now())
+  withdrawnAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([pilotProgramId, userId])
+  @@index([pilotProgramId])
+  @@index([userId])
+  @@index([status])
+}
+
+/// Contextual Pilot Student Feedback Ledger
+model PilotFeedback {
+  id             String       @id @default(uuid())
+  pilotProgramId String
+  pilotProgram   PilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation("UserPilotFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  feedbackType   String       // GENERAL | JOURNEY | RECOMMENDATION | AI_MENTOR | PROJECT | CAREER | OPPORTUNITY
+  rating         String?      // VERY_HELPFUL | HELPFUL | NOT_HELPFUL | CONFUSING
+  comment        String?
+  createdAt      DateTime     @default(now())
+
+  @@index([pilotProgramId])
+  @@index([userId])
+  @@index([feedbackType])
+}
+
+/// Pilot Issue Tracking Ledger
+model PilotIssue {
+  id             String       @id @default(uuid())
+  pilotProgramId String
+  pilotProgram   PilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Cascade)
+  category       String       // USABILITY | CONFUSION | PERFORMANCE | MOBILE | AI_QUALITY | RECOMMENDATION | CONTENT | ACCESSIBILITY | PRIVACY | AUTHORIZATION | DATA
+  severity       String       @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status         String       @default("OPEN") // OPEN | INVESTIGATING | PLANNED | FIXED | VERIFIED | REJECTED
+  summary        String
+  description    String?
+  createdBy      String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([pilotProgramId])
+  @@index([category])
+  @@index([severity])
+  @@index([status])
+}
+
+/// Product Hypothesis Testing Ledger
+model PilotHypothesis {
+  id              String       @id @default(uuid())
+  pilotProgramId  String
+  pilotProgram    PilotProgram @relation(fields: [pilotProgramId], references: [id], onDelete: Cascade)
+  statement       String
+  status          String       @default("INCONCLUSIVE") // SUPPORTED | NOT_SUPPORTED | INCONCLUSIVE
+  evidenceSummary String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([pilotProgramId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 19 — AI Quality, Safety & Evaluation Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Standardized AI Interaction Ledger
+model AIInteraction {
+  id              String               @id @default(uuid())
+  userId          String
+  user            User                 @relation("UserAIInteractions", fields: [userId], references: [id], onDelete: Cascade)
+  role            String               @default("student")
+  feature         String               // AI_MENTOR | COURSE_INTELLIGENCE | CAREER_GUIDANCE | PROJECT_HELP | OPPORTUNITY_MATCHING
+  interactionType String               // CHAT_RESPONSE | EXPLANATION | RECOMMENDATION | HINT | PRACTICE_FEEDBACK
+  requestStatus   String               // RECEIVED | VALIDATED | AUTHORIZED | CONTEXT_RESOLVED | SAFETY_CHECKED | GENERATING | GENERATED | OUTPUT_VALIDATED | EVALUATED | DELIVERED | BLOCKED | REFUSED | DEGRADED | FAILED | FALLBACK_DELIVERED
+  responseStatus  String               // DELIVERED | FALLBACK_DELIVERED | BLOCKED | FAILED
+  modelProvider   String               @default("openai")
+  modelVersion    String               @default("gpt-4o")
+  latencyMs       Int                  @default(0)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  evaluations     AIQualityEvaluation[]
+  feedbacks       AIFeedback[]
+
+  @@index([userId])
+  @@index([feature])
+  @@index([requestStatus])
+  @@index([responseStatus])
+}
+
+/// AI Quality & Safety Evaluation Record
+model AIQualityEvaluation {
+  id                       String        @id @default(uuid())
+  interactionId            String
+  interaction              AIInteraction @relation(fields: [interactionId], references: [id], onDelete: Cascade)
+  overallQuality           String        @default("HEALTHY") // HEALTHY | WATCH | DEGRADED | UNHEALTHY
+  helpfulnessScore         Float         @default(1.0)
+  relevanceScore           Float         @default(1.0)
+  groundednessScore        Float         @default(1.0)
+  educationalAccuracyScore Float         @default(1.0)
+  safetyScore              Float         @default(1.0)
+  privacyScore             Float         @default(1.0)
+  fairnessScore            Float         @default(1.0)
+  hallucinationRisk        String        @default("LOW_RISK") // LOW_RISK | MODERATE_RISK | HIGH_RISK | INSUFFICIENT_EVIDENCE
+  confidenceLevel          String        @default("HIGH") // HIGH | MODERATE | LOW | UNCERTAIN
+  evaluationSource         String        @default("AUTOMATED") // AUTOMATED | HUMAN_REVIEW | MODEL_BENCHMARK
+  createdAt                DateTime      @default(now())
+
+  @@index([interactionId])
+  @@index([overallQuality])
+  @@index([hallucinationRisk])
+}
+
+/// Student AI Quality Feedback Ledger
+model AIFeedback {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation("UserAIFeedbacks", fields: [userId], references: [id], onDelete: Cascade)
+  interactionId String
+  interaction   AIInteraction @relation(fields: [interactionId], references: [id], onDelete: Cascade)
+  feedbackType  String        // HELPFUL | NOT_HELPFUL | INCORRECT | NOT_RELEVANT | UNSAFE | OTHER
+  comment       String?
+  createdAt     DateTime      @default(now())
+
+  @@index([userId])
+  @@index([interactionId])
+  @@index([feedbackType])
+}
+
+/// AI Quality & Safety Incident Ledger
+model AIIncident {
+  id          String   @id @default(uuid())
+  category    String   // SAFETY_VIOLATION | PRIVACY_RISK | UNAUTHORIZED_DATA_ATTEMPT | PROMPT_INJECTION_ATTEMPT | HALLUCINATION_RISK | SYSTEMIC_QUALITY_DEGRADATION | MODEL_FAILURE | BIAS_RISK
+  severity    String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status      String   @default("OPEN") // OPEN | INVESTIGATING | MITIGATED | RESOLVED | DISMISSED
+  summary     String
+  details     String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([severity])
+  @@index([status])
+}
+
+/// AI Evaluation Dataset Header
+model AIEvaluationDataset {
+  id          String             @id @default(uuid())
+  name        String
+  description String?
+  version     String             @default("v1.0")
+  createdBy   String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  cases       AIEvaluationCase[]
+  runs        AIModelEvaluationRun[]
+}
+
+/// AI Evaluation Case Details
+model AIEvaluationCase {
+  id                 String                @id @default(uuid())
+  datasetId          String
+  dataset            AIEvaluationDataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  feature            String                // AI_MENTOR | KNOWLEDGE_EXPLANATION | PROMPT_INJECTION | PRIVACY_CHECK | REASONING_CHECK
+  scenario           String
+  input              String
+  expectedBehavior   String
+  evaluationCriteria String?
+  riskCategory       String                @default("QUALITY") // QUALITY | SAFETY | PRIVACY | GROUNDING | REGRESSION
+  enabled            Boolean               @default(true)
+  createdAt          DateTime              @default(now())
+
+  results            AIModelEvaluationResult[]
+
+  @@index([datasetId])
+  @@index([feature])
+  @@index([riskCategory])
+}
+
+/// AI Model Evaluation Run Tracker
+model AIModelEvaluationRun {
+  id            String                    @id @default(uuid())
+  modelProvider String                    @default("openai")
+  modelVersion  String                    @default("gpt-4o")
+  datasetId     String
+  dataset       AIEvaluationDataset       @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  status        String                    @default("RUNNING") // RUNNING | COMPLETED | FAILED
+  summary       String?
+  startedAt     DateTime                  @default(now())
+  completedAt   DateTime?
+
+  results       AIModelEvaluationResult[]
+
+  @@index([datasetId])
+  @@index([status])
+}
+
+/// AI Model Evaluation Case Result
+model AIModelEvaluationResult {
+  id                String               @id @default(uuid())
+  evaluationRunId   String
+  evaluationRun     AIModelEvaluationRun @relation(fields: [evaluationRunId], references: [id], onDelete: Cascade)
+  evaluationCaseId  String
+  evaluationCase    AIEvaluationCase     @relation(fields: [evaluationCaseId], references: [id], onDelete: Cascade)
+  passed            Boolean              @default(true)
+  qualityScore      Float                @default(1.0)
+  safetyScore       Float                @default(1.0)
+  groundednessScore Float                @default(1.0)
+  notes             String?
+  createdAt         DateTime             @default(now())
+
+  @@index([evaluationRunId])
+  @@index([evaluationCaseId])
+  @@index([passed])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 20 — Performance, Scale & Observability Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// System Performance & Latency Telemetry Metric Snapshot
+model PerformanceMetric {
+  id          String   @id @default(uuid())
+  metricName  String   // LATENCY_P50 | LATENCY_P95 | LATENCY_P99 | CACHE_HIT_RATIO | EVENT_QUEUE_LAG | SLOW_QUERY_COUNT | API_THROUGHPUT
+  metricValue Float
+  unit        String   @default("ms") // ms | percent | count | req_per_sec
+  tags        Json?
+  timestamp   DateTime @default(now())
+
+  @@index([metricName])
+  @@index([timestamp])
+}
+
+/// Slow Database Query Log Tracker
+model SlowQueryLog {
+  id         String   @id @default(uuid())
+  queryKey   String
+  durationMs Int
+  context    String?
+  timestamp  DateTime @default(now())
+
+  @@index([queryKey])
+  @@index([durationMs])
+  @@index([timestamp])
+}
+
+/// Asynchronous Background Job Execution Store
+model BackgroundJob {
+  id             String    @id @default(uuid())
+  jobType        String    // LEARNING_EVENT_PROCESS | ANALYTICS_AGGREGATION | AI_EVALUATION | NOTIFICATION_SEND | RECOMMENDATION_REFRESH
+  status         String    @default("QUEUED") // QUEUED | PROCESSING | COMPLETED | FAILED | RETRYING | DEAD_LETTER
+  payload        Json?
+  retryCount     Int       @default(0)
+  maxRetries     Int       @default(3)
+  errorLog       String?
+  idempotencyKey String?   @unique
+  processedAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([jobType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Operational Performance & Scale Attention Signals
+model PerformanceAlert {
+  id        String   @id @default(uuid())
+  alertType String   // HIGH_ERROR_RATE | LATENCY_DEGRADATION | DATABASE_SLOW_QUERY_SPIKE | QUEUE_BACKLOG_HIGH | JOB_FAILURE_SPIKE | AI_PROVIDER_DEGRADATION
+  severity  String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status    String   @default("DETECTED") // DETECTED | ACKNOWLEDGED | INVESTIGATING | MITIGATED | RESOLVED
+  message   String
+  timestamp DateTime @default(now())
+
+  @@index([alertType])
+  @@index([severity])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 22 — Hyperscale Student, Content & Global Infrastructure Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Global Object Storage Media Asset Reference
+model MediaAsset {
+  id              String          @id @default(uuid())
+  ownerId         String
+  title           String
+  mimeType        String
+  fileSizeBytes   BigInt          @default(0)
+  storageProvider String          @default("S3") // S3 | GCS | AZURE | LOCAL
+  storageKey      String
+  cdnUrl          String?
+  status          String          @default("PENDING") // PENDING | UPLOADING | UPLOADED | PROCESSING | READY | FAILED | ARCHIVED | DELETED
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  uploadSessions  UploadSession[]
+
+  @@index([ownerId])
+  @@index([mimeType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Resumable Chunked Upload Session Store
+model UploadSession {
+  id             String     @id @default(uuid())
+  mediaAssetId   String
+  mediaAsset     MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+  uploadToken    String     @unique
+  chunkSizeBytes Int        @default(5242880) // 5MB chunks
+  uploadedBytes  BigInt     @default(0)
+  expiresAt      DateTime
+  createdAt      DateTime   @default(now())
+
+  @@index([mediaAssetId])
+  @@index([uploadToken])
+}
+
+/// Decoupled Provider-Agnostic Search Index Record
+model SearchIndexRecord {
+  id             String   @id @default(uuid())
+  entityType     String   // COURSE | LESSON | INSTRUCTOR | SKILL | PROJECT | OPPORTUNITY
+  entityId       String
+  searchTokens   String
+  contentPayload Json?
+  indexedAt      DateTime @default(now())
+
+  @@index([entityType])
+  @@index([entityId])
+  @@index([indexedAt])
+}
+
+
+
+
+
+
+
 

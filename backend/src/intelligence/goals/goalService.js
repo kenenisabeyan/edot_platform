@@ -72,11 +72,13 @@ export async function createOrUpdateGoal(userId, { goalText, category = 'career'
 
 /**
  * Retrieves active learner goal and roadmap DTO.
+ * Returns null with dataStatus INSUFFICIENT_DATA if the student has no goal.
+ * Does NOT silently create a hardcoded default goal.
  */
 export async function getLearnerActiveGoalAndRoadmap(userId) {
   const profile = await prisma.learnerProfile.findUnique({ where: { userId } });
   if (!profile) {
-    return createOrUpdateGoal(userId, { goalText: 'Become a Frontend Developer' });
+    return { goalId: null, goalText: null, status: 'INSUFFICIENT_DATA', roadmap: null };
   }
 
   const goal = await prisma.learnerGoal.findFirst({
@@ -86,7 +88,7 @@ export async function getLearnerActiveGoalAndRoadmap(userId) {
   });
 
   if (!goal) {
-    return createOrUpdateGoal(userId, { goalText: 'Become a Frontend Developer' });
+    return { goalId: null, goalText: null, status: 'INSUFFICIENT_DATA', roadmap: null };
   }
 
   const roadmap = goal.roadmaps[0];

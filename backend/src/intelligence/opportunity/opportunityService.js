@@ -95,8 +95,8 @@ export async function getUserOpportunityMatches(userId) {
 
   const learnerData = {
     skills: userSkills,
-    interests: userProfile?.interests || [],
-    goals: userProfile?.goals || []
+    interests: (userProfile?.learnerInterests || []).map(i => i.topic),
+    goals: (userProfile?.goals || []).map(g => g.goalText || g)
   };
 
   const matches = [];

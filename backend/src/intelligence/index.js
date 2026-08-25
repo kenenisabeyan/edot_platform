@@ -15,6 +15,17 @@ export * as AnalyticsService from './analytics/analyticsService.js';
 export * as MentorService from './mentor/mentorService.js';
 export * as RecommendationService from './recommendations/recommendationService.js';
 export * as CourseIntelligenceService from './course-intelligence/courseIntelligenceService.js';
+export * as CareerIntelligenceService from './career/careerIntelligenceService.js';
+export * as ProjectIntelligenceService from './projects/projectService.js';
+export * as CollaborationService from './collaboration/collaborationService.js';
+export * as OpportunityIntelligenceService from './opportunities/opportunityService.js';
+export * as ExperienceIntelligenceService from './experience/edotIntelligenceExperienceService.js';
+export * as ProductAuditService from './audit/auditService.js';
+export * as PilotValidationService from './pilot/pilotService.js';
+export * as AIQualityService from './ai-quality/aiQualityOrchestrator.js';
+export * as PerformanceService from './performance/performanceOrchestrator.js';
+export * as ProductionReadinessService from './production/productionOrchestrator.js';
+export * as HyperscaleService from './hyperscale/hyperscaleOrchestrator.js';
 
 /**
  * Initializes the Intelligence Subsystem and background event handlers.

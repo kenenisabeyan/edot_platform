@@ -10,6 +10,17 @@ import analyticsRoutes from './analytics/analyticsRoutes.js';
 import mentorRoutes from './mentor/mentorRoutes.js';
 import recommendationRoutes from './recommendations/recommendationRoutes.js';
 import courseIntelligenceRoutes from './course-intelligence/courseIntelligenceRoutes.js';
+import careerRoutes from './career/careerRoutes.js';
+import projectRoutes from './projects/projectRoutes.js';
+import collaborationRoutes from './collaboration/collaborationRoutes.js';
+import opportunityRoutes from './opportunities/opportunityRoutes.js';
+import experienceRoutes from './experience/experienceRoutes.js';
+import auditRoutes from './audit/auditRoutes.js';
+import pilotRoutes from './pilot/pilotRoutes.js';
+import aiQualityRoutes from './ai-quality/aiQualityRoutes.js';
+import performanceRoutes from './performance/performanceRoutes.js';
+import productionRoutes from './production/productionRoutes.js';
+import hyperscaleRoutes from './hyperscale/hyperscaleRoutes.js';
 import { intelligenceErrorHandler } from './shared/errors.js';
 
 const router = express.Router();
@@ -21,6 +32,17 @@ router.use('/analytics', analyticsRoutes);
 router.use('/mentor', mentorRoutes);
 router.use('/recommendations', recommendationRoutes);
 router.use('/courses', courseIntelligenceRoutes);
+router.use('/career', careerRoutes);
+router.use('/projects', projectRoutes);
+router.use('/collaboration', collaborationRoutes);
+router.use('/opportunities', opportunityRoutes);
+router.use('/experience', experienceRoutes);
+router.use('/product-experience', auditRoutes);
+router.use('/pilots', pilotRoutes);
+router.use('/ai-quality', aiQualityRoutes);
+router.use('/performance', performanceRoutes);
+router.use('/production', productionRoutes);
+router.use('/hyperscale', hyperscaleRoutes);
 
 // Intelligence Domain Error Boundary
 router.use(intelligenceErrorHandler);
