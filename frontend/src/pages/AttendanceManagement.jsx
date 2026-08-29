@@ -40,16 +40,16 @@ export default function AttendanceManagement() {
   const { data: globalReports = [], isLoading: loadingGlobalReports } = useQuery({
     queryKey: ['globalAttendanceReports'],
     queryFn: async () => {
-       const res = await api.get('/attendance/reports');
-       return res.data.data || [];
+       const res = await api.get('/attendance/reports').catch(() => ({ data: { data: [] } }));
+       return res.data?.data || [];
     }
   });
 
   const { data: globalDailyAttendances = [], isLoading: loadingGlobalDaily } = useQuery({
     queryKey: ['globalDailyAttendances'],
     queryFn: async () => {
-       const res = await api.get('/attendance/all');
-       return res.data.data || [];
+       const res = await api.get('/attendance/all').catch(() => ({ data: { data: [] } }));
+       return res.data?.data || [];
     }
   });
 

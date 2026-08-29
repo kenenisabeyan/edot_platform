@@ -47,12 +47,12 @@ export default function EDOTDashboard() {
     queryKey: ['edotDashboardStats', userRole],
     queryFn: async () => {
       if (userRole === 'sponsor') {
-        const { data } = await api.get('/sponsor/dashboard');
+        const { data } = await api.get('/sponsor/dashboard').catch(() => ({ data: {} }));
         return data;
       }
       if (userRole === 'student') {
-        const { data } = await api.get('/student/dashboard');
-        const payload = data.data || {};
+        const { data } = await api.get('/student/dashboard').catch(() => ({ data: { data: {} } }));
+        const payload = data?.data || {};
         return {
            profile: payload.profile || {},
            enrolledCourses: payload.enrollments || [],
@@ -86,7 +86,7 @@ export default function EDOTDashboard() {
         };
       }
       const [dashRes, activitiesRes] = await Promise.all([
-        api.get(`/${userRole}/dashboard`),
+        api.get(`/${userRole}/dashboard`).catch(() => ({ data: { data: {} } })),
         api.get('/activity/all').catch(() => ({ data: { data: [] } }))
       ]);
       
@@ -101,7 +101,7 @@ export default function EDOTDashboard() {
       }));
 
       return {
-        ...dashRes.data.data,
+        ...(dashRes.data?.data || {}),
         recentActivities: formattedActivities
       };
     },
@@ -582,8 +582,12 @@ export default function EDOTDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-80">
-        <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className={`w-10 h-10 border-4 rounded-full animate-spin ${
+          isDarkMode 
+            ? 'border-white/20 border-t-white' 
+            : 'border-slate-200 border-t-emerald-500'
+        }`}></div>
       </div>
     );
   }

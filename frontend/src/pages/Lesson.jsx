@@ -489,7 +489,7 @@ export default function Lesson() {
         <div className={`bg-[#0B1120] border p-10 rounded-2xl shadow-2xl text-center max-w-md w-full ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
           <Lock className="w-16 h-16 text-red-500 mx-auto mb-6" />
           <p className="font-black mb-8 text-xl  ">{error || 'Clearance error.'}</p>
-          <Link to="/student/courses" className={`px-6 py-4 ] font-black rounded-full hover:] inline-flex items-center gap-2 transition-colors bg-[#00D4FF] hover:bg-[#00A3CC] shadow-md border border-[#00D4FF] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+          <Link to="/dashboard/courses" className={`px-6 py-4 ] font-black rounded-full hover:] inline-flex items-center gap-2 transition-colors bg-[#00D4FF] hover:bg-[#00A3CC] shadow-md border border-[#00D4FF] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
             <ArrowLeft className="w-5 h-5" /> Return to Dashboard
           </Link>
         </div>
@@ -506,7 +506,7 @@ export default function Lesson() {
       <div className={`w-full backdrop-blur-xl border-b sticky top-0 z-50 shadow-md transition-colors duration-300 ${isDarkMode ? 'bg-[#0B1120]/90 border-white/20' : 'bg-white/90 border-slate-300'}`}>
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <div className="flex items-center gap-6">
-                <Link to="/student/courses" className={`flex items-center justify-center min-w-[140px] gap-2 font-bold transition-colors px-8 py-2.5 rounded-full border shadow-md text-white bg-[#1e48bc] hover:bg-[#295ce8] border-transparent`}>
+                <Link to="/dashboard/courses" className={`flex items-center justify-center min-w-[140px] gap-2 font-bold transition-colors px-8 py-2.5 rounded-full border shadow-md text-white bg-[#1e48bc] hover:bg-[#295ce8] border-transparent`}>
                    <ArrowLeft className="w-4 h-4" /> Dashboard
                 </Link>
                 <Link to={`/course/${course.id}`} className={`flex items-center justify-center min-w-[140px] gap-2 font-bold transition-colors px-8 py-2.5 rounded-full border shadow-md text-slate-900 bg-[#00D4FF] hover:bg-[#00A3CC] border-transparent`}>
@@ -807,7 +807,7 @@ export default function Lesson() {
                      </button>
                   )
                ) : (
-                  <Link to="/student/profile" className={`px-10 py-5 ] font-black rounded-full hover:] transition-colors flex items-center justify-center gap-3 mx-auto max-w-xs cursor-pointer inline-flex bg-[#00D4FF] hover:bg-[#00A3CC] shadow-md border border-[#00D4FF] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Link to="/dashboard/certificates" className={`px-10 py-5 ] font-black rounded-full hover:] transition-colors flex items-center justify-center gap-3 mx-auto max-w-xs cursor-pointer inline-flex bg-[#00D4FF] hover:bg-[#00A3CC] shadow-md border border-[#00D4FF] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                      <CheckCircle2 className="w-5 h-5 text-[#00D4FF] group-hover:text-white" /> View Certificate
                   </Link>
                )}

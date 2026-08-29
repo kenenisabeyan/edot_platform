@@ -68,6 +68,7 @@ const AttendanceManagement = lazyWithRetry(() => import('./pages/AttendanceManag
 const Revenue = lazyWithRetry(() => import('./pages/Revenue'));
 const Performance = lazyWithRetry(() => import('./pages/Performance'));
 const TeachingActivity = lazyWithRetry(() => import('./pages/TeachingActivity'));
+const IntelligenceHubView = lazyWithRetry(() => import('./pages/IntelligenceHubView'));
 const AnalyticsReport = lazyWithRetry(() => import('./pages/AnalyticsReport'));
 const SettingsView = lazyWithRetry(() => import('./pages/SettingsView'));
 const UsersManagement = lazyWithRetry(() => import('./pages/UsersManagement'));
@@ -334,6 +335,7 @@ export default function App() {
           <Route path="career-hub" element={<Suspense fallback={<LazyLoadingFallback />}><CareerCenter /></Suspense>} />
           <Route path="profile" element={<Suspense fallback={<LazyLoadingFallback />}><ProfileView /></Suspense>} />
           <Route path="live-classes" element={<Suspense fallback={<LazyLoadingFallback />}><LiveClassesView /></Suspense>} />
+          <Route path="intelligence/*" element={<Suspense fallback={<LazyLoadingFallback />}><IntelligenceHubView /></Suspense>} />
 
           {/* Sponsor Only Routes */}
           <Route element={<ProtectedRoute allowedRoles={['sponsor']} />}>
@@ -356,7 +358,7 @@ export default function App() {
 function DashboardRouter() {
   const { user } = useAuth();
   
-  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
-  if (user?.role === 'instructor') return <Navigate to="/instructor" replace />;
-  return <Navigate to="/student" replace />; // Default to student
+  if (user?.role === 'admin') return <Navigate to="/dashboard" replace />;
+  if (user?.role === 'instructor') return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/dashboard" replace />;
 }
