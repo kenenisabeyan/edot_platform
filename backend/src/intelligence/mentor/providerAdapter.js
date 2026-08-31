@@ -31,7 +31,7 @@ export class GeminiAIProvider extends AIProvider {
   }
 
   async chat(prompt, context = {}, options = {}) {
-    const { modelName = 'gemini-3.6-flash', timeoutMs = 15000 } = options;
+    const { modelName = 'gemini-1.5-flash', timeoutMs = 15000 } = options;
 
     if (!this.apiKey || !this.genAI) {
       return this.fallbackChatResponse(prompt, context);
@@ -41,7 +41,7 @@ export class GeminiAIProvider extends AIProvider {
     while (retries >= 0) {
       try {
         const model = this.genAI.getGenerativeModel({ model: modelName });
-        const systemInstruction = context.systemInstruction || 'You are EDOT AI Academic Mentor.';
+        const systemInstruction = context.systemInstruction || 'You are EDOT AI Academic Mentor. Always provide complete, thorough, human-like responses without artificial length limits or arbitrary cutoffs. Explain concepts in depth with clear, engaging, human warmth.';
         
         const fullPrompt = `${systemInstruction}\n\n[STUDENT LEARNING CONTEXT]\n${JSON.stringify(context, null, 2)}\n\n[STUDENT QUERY]\n${prompt}`;
 
@@ -88,23 +88,26 @@ export class GeminiAIProvider extends AIProvider {
    * Deterministic Grounded Fallback Response when API is unavailable or unconfigured
    */
   fallbackChatResponse(prompt, context) {
-    const currentLesson = context.currentLessonTitle || 'this lesson';
-    const courseTitle = context.currentCourseTitle || 'the course';
-    const weakTopic = context.identifiedWeakSkills?.[0] || 'core concepts';
+    const currentLesson = context.currentLessonTitle || 'your active lesson';
+    const courseTitle = context.currentCourseTitle || 'EDOT platform courses';
+    const cleanPrompt = (prompt || '').trim();
+
+    let dynamicAnswer = `I am your EDOT AI Academic Mentor. Regarding "${cleanPrompt}", I am here to guide you step-by-step through ${courseTitle}. `;
+    if (/course|class|enroll|catalog|all our courses/i.test(cleanPrompt)) {
+      dynamicAnswer = `We offer a wide range of interactive courses across Computer Science, Software Engineering, Data Science, AI, Business, and Mathematics. You can view all available courses in your My Courses dashboard or Course Catalog.`;
+    } else if (/continue|mentor|help|guide/i.test(cleanPrompt)) {
+      dynamicAnswer = `I am right here with you! What specific question or concept in ${currentLesson} would you like to explore next?`;
+    }
 
     return {
       rawText: JSON.stringify({
-        answer: `I am your EDOT AI Academic Mentor for ${courseTitle}. Based on your progress in "${currentLesson}", I am here to guide your study. ${
-          context.knowledgeAvailable === false 
-            ? 'Information regarding specific unindexed course materials could not be verified from available course documents.'
-            : `To master ${weakTopic}, focus on reviewing the key module notes and attempting practice questions.`
-        }`,
+        answer: dynamicAnswer,
         sources: context.sources || [courseTitle],
         suggestedNextActions: [
-          `Review lesson notes for ${currentLesson}`,
-          `Practice weak topic: ${weakTopic}`
+          `Explore concepts in ${currentLesson}`,
+          `Ask a specific question`
         ],
-        confidence: 0.92,
+        confidence: 0.95,
         needsHumanSupport: false
       }),
       provider: 'deterministic-fallback',

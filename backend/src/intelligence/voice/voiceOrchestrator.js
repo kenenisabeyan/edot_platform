@@ -177,12 +177,33 @@ export class VoiceOrchestrator {
 
     const userText = sttResult.transcript || transcript || 'Hello mentor';
 
+    // Auto-resolve conversationId if missing
+    let targetConversationId = conversationId;
+    if (!targetConversationId) {
+      let conversation = await prisma.mentorConversation.findFirst({
+        where: { userId, contextCourseId: courseId },
+        orderBy: { updatedAt: 'desc' }
+      });
+      if (!conversation) {
+        conversation = await prisma.mentorConversation.create({
+          data: {
+            userId,
+            contextCourseId: courseId,
+            contextLessonId: lessonId,
+            title: 'Voice Learning Session',
+            topic: 'Interactive Voice Mentorship'
+          }
+        });
+      }
+      targetConversationId = conversation.id;
+    }
+
     // ──────────────────────────────────────────────
     // STAGE 3: Save user message to conversation
     // ──────────────────────────────────────────────
     await prisma.mentorMessage.create({
       data: {
-        conversationId,
+        conversationId: targetConversationId,
         role: 'user',
         content: userText,
         inputType,
@@ -244,7 +265,7 @@ export class VoiceOrchestrator {
     // ──────────────────────────────────────────────
     await prisma.mentorMessage.create({
       data: {
-        conversationId,
+        conversationId: targetConversationId,
         role: 'assistant',
         content: mentorReply,
         inputType: 'TEXT',

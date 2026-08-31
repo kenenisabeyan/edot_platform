@@ -198,7 +198,7 @@ async function generateQuestionsWithAI({ skillName, practiceType, difficulty, qu
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'dummy_key') {
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-1.5-flash',
         systemInstruction: systemPrompt
       });
 

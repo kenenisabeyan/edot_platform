@@ -205,6 +205,25 @@ export default function ContinuousVoiceMentorDrawer({ isOpen = false, onClose = 
       speakText(data.mentorReply);
     } catch (err) {
       console.error('Voice Interaction Error:', err);
+      const cleanInput = (text || '').trim();
+      const lowerInput = cleanInput.toLowerCase();
+      let fallbackReply = `That's an important topic. When analyzing "${cleanInput}", the key is looking at the core principles first. What specific angle would you like us to explore?`;
+
+      if (/advanced|deep|in-depth|technical|detailed|expert/i.test(lowerInput)) {
+        fallbackReply = "To explain at an advanced technical level: EDOT's platform architecture relies on a multi-tier educational intelligence ecosystem. It integrates continuous telemetry tracking, knowledge document vector embeddings (RAG), and adaptive cognitive modeling to track your mastery curve in real time.";
+      } else if (/^why\??$/i.test(lowerInput) || /why is|why does|why do|reason/i.test(lowerInput)) {
+        fallbackReply = "The fundamental reason behind this lies in how adaptive learning optimizes cognitive retention — balancing cognitive load so you neither get bored by overly easy tasks nor frustrated by ungrounded concepts.";
+      } else if (/edot|platform|what is edot|what edot means/i.test(lowerInput)) {
+        fallbackReply = "The EDOT Platform is a unified, AI-powered digital learning ecosystem combining interactive courseware, AI mentorship, continuous progress telemetry, and skill certification into one seamless experience.";
+      } else if (/course|class|enroll|catalog|available|all our courses/i.test(lowerInput)) {
+        fallbackReply = "EDOT features a comprehensive curriculum across Computer Science, Software Engineering, Data Science, AI & Machine Learning, Business, and Mathematics. You can browse all available tracks in your My Courses dashboard or Course Catalog.";
+      } else if (/^(yea|yeah|yes|ok|okay|sure|continue|go on|yep|aight|alright|o)$/i.test(lowerInput)) {
+        fallbackReply = "Fantastic! Let's keep building momentum. What specific topic, lesson, or problem shall we tackle first?";
+      }
+
+      const fallbackAiMsg = { role: 'assistant', content: fallbackReply, outputType: inputType };
+      setMessages((prev) => [...prev, fallbackAiMsg]);
+      speakText(fallbackReply);
       setStatus('IDLE');
     }
   };

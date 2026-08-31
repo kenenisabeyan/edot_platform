@@ -27,13 +27,13 @@ const MODE_INSTRUCTIONS = {
   MOTIVATION: 'You are in MOTIVATION mode. Provide warm, realistic, highly supportive learning encouragement tailored to their current progress and struggles.'
 };
 
-const VOICE_POLICY = `CRITICAL VOICE RULES:
-- Speak naturally in conversational sentences suitable for audio playback.
-- NEVER use markdown formatting (no asterisks, hashes, backticks, bullet points, numbered lists).
-- Keep responses under 3-4 short sentences unless the student explicitly asks for depth.
-- Use natural verbal transitions: "So...", "Now...", "Here's the thing...", "Think of it this way..."
+const VOICE_POLICY = `CRITICAL HUMAN CONVERSATIONAL RULES:
+- Provide complete, thorough, natural human answers without artificial sentence limits.
+- Speak naturally and warmly like an expert human mentor talking directly to a student.
+- Give rich, comprehensive explanations with clear step-by-step reasoning.
+- Use natural conversational transitions: "So...", "Now...", "Here's the thing...", "Think of it this way..."
 - Ask an engaging follow-up checkpoint question when appropriate.
-- If referencing course material, mention it conversationally, not as citations.`;
+- If referencing course material, mention it conversationally.`;
 
 export class TextGenerationProvider {
   /**
@@ -110,7 +110,7 @@ export class TextGenerationProvider {
 
     try {
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-1.5-flash',
         systemInstruction: systemPolicy
       });
 
@@ -135,19 +135,46 @@ export class TextGenerationProvider {
    * Generate a contextual fallback response when the API is unavailable.
    */
   static generateFallbackResponse(mode, userMessage) {
-    const fallbacks = {
-      EXPLAIN: `That's a great question! Let me break it down for you. The key idea here is to start with the fundamentals and build up from there. What part feels most unclear to you right now?`,
-      SOCRATIC: `Interesting question! Before I answer directly, let me ask you this: what do you already know about this topic? What's your initial instinct telling you?`,
-      PRACTICE: `Let's put your knowledge to the test! Here's a quick challenge: can you explain this concept in your own words, as if you're teaching it to a friend?`,
-      QUIZ: `Quick quiz time! Based on what we've been discussing, what would you say is the most important takeaway? I'll let you know how you did!`,
-      STUDY: `Let's work through this systematically. We'll start with the big picture and then zoom into the details. Ready to dive in?`,
-      EXAM_PREPARATION: `Let's simulate an exam scenario. I'll ask you a question the way it might appear on a test. Take your time and think through your answer carefully.`,
-      PROJECT_COACH: `Great project question! Let's think about this step by step. First, what's the core problem you're trying to solve? That will guide our architecture decisions.`,
-      DEBUG_UNDERSTANDING: `I want to make sure we're on the same page. Can you walk me through your current understanding? Sometimes explaining it out loud helps identify where things get fuzzy.`,
-      MOTIVATION: `You're doing amazing work just by showing up and asking questions! Every expert was once a beginner. What's one thing you learned today that surprised you?`
-    };
+    const cleanMsg = (userMessage || '').trim();
+    const lowerMsg = cleanMsg.toLowerCase();
 
-    return fallbacks[mode] || fallbacks.EXPLAIN;
+    // 1. ADVANCED / IN-DEPTH EXPLANATION REQUESTS
+    if (/advanced|deep|in-depth|technical|detailed|expert/i.test(lowerMsg)) {
+      return `To explain this at an advanced, technical level: EDOT's platform architecture relies on a multi-tier educational intelligence ecosystem. It integrates continuous telemetry tracking, knowledge document vector embeddings (RAG), and adaptive cognitive modeling to track your mastery curve across every concept in real time. Rather than linear instruction, it dynamically recalibrates lesson paths, quiz difficulty, and practice exercises based on your exact retention metrics. Which technical subsystem would you like to explore deeper — the RAG knowledge pipeline, the adaptive skill graph, or the telemetry engine?`;
+    }
+
+    // 2. WHY / CAUSE / REASON INQUIRIES
+    if (/^why\??$/i.test(lowerMsg) || /why is|why does|why do|reason/i.test(lowerMsg)) {
+      return `The fundamental reason behind this lies in how adaptive learning optimizes cognitive retention. When education is tailored to an individual's personal pace, cognitive load is balanced — preventing both boredom from overly easy material and frustration from ungrounded concepts. By continuously analyzing your practice responses and study rhythm, EDOT ensures every lesson directly strengthens your weak areas while accelerating your domain strengths.`;
+    }
+
+    // 3. EDOT PLATFORM DEFINITION & PURPOSE
+    if (/edot|platform|what is edot|what edot means/i.test(lowerMsg)) {
+      return `The EDOT Platform is a unified, AI-powered digital learning ecosystem. It brings together interactive course materials, real-time AI mentorship, continuous telemetry progress analytics, parent/guardian insight portals, and sponsorship networks into one seamless experience. Instead of static textbook learning, EDOT adapts directly to your speed, goals, and style — providing instant explanations, guided practice, and industry-aligned skill certificates.`;
+    }
+
+    // 4. COURSE & CATALOG INQUIRIES
+    if (/course|class|enroll|catalog|available|all our courses/i.test(lowerMsg)) {
+      return `EDOT features a comprehensive curriculum spanning Computer Science, Full-Stack Web Development, Data Science, AI & Machine Learning, Business & Entrepreneurship, and Mathematics. In addition to your active enrolled courses, you have full access to browse the complete Course Catalog, complete self-paced lessons, earn verified certificates, and practice with your AI Mentor. Which course track or career skill would you like to focus on today?`;
+    }
+
+    // 5. AFFIRMATIVE / SHORT CONTINUATION PROMPTS ("yea", "yes", "ok", "continue", "go on", "sure")
+    if (/^(yea|yeah|yes|ok|okay|sure|continue|go on|yep|aight|alright|o)$/i.test(lowerMsg)) {
+      return `Fantastic! Let's keep building momentum. We can dive right into your active course material, analyze code architecture, practice problem-solving, or explore an advanced concept you're curious about. What specific topic shall we tackle first?`;
+    }
+
+    // 6. PROGRESS, GRADES, CERTIFICATES & MASTERY
+    if (/progress|grade|certificate|score|mastery|streak/i.test(lowerMsg)) {
+      return `You can view your complete learning velocity, quiz averages, weekly study hours, and earned certificates inside your Intelligence Hub under My Progress and My Mastery. Your continuous effort is building strong momentum! What specific goal or milestone are you aiming to hit next?`;
+    }
+
+    // 7. MENTOR & GUIDANCE PROMPTS
+    if (/mentor|guide|help|tutor|teach/i.test(lowerMsg)) {
+      return `I am your personal AI Academic Mentor! I am here to explain complex concepts in plain English, guide you through interactive practice problems, debug code, and help prepare for exams. What lesson or problem can we solve together right now?`;
+    }
+
+    // 8. GENERAL INTENTIONAL RESPONDER
+    return `That's an important topic. When we analyze "${cleanMsg}", the key is to look at the underlying principles first and then examine how they apply in practice. Let me know which specific angle or question about this you'd like to dive into!`;
   }
 }
 

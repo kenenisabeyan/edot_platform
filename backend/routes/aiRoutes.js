@@ -17,7 +17,7 @@ async function callGemini(systemInstruction, promptText) {
         throw new Error('Gemini API key is not configured.');
     }
     const model = genAI.getGenerativeModel({
-        model: "gemini-3.5-flash",
+        model: "gemini-1.5-flash",
         systemInstruction: systemInstruction
     });
     const result = await model.generateContent(promptText);

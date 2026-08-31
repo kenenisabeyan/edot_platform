@@ -288,10 +288,25 @@ If this certificate was just claimed, please reload the page or download it agai
              });
         }
 
+        let personalContextSummary = '';
+        if (user) {
+            try {
+                const personalContext = await resolvePersonalIntelligenceContext({
+                    authUser: user,
+                    targetUserId: user.id,
+                    message
+                });
+                personalContextSummary = JSON.stringify(personalContext.humanContext);
+            } catch (pErr) {
+                console.warn('Personal context resolution warning in chatbot:', pErr.message);
+            }
+        }
+
         // Custom system instruction for personalization or guest welcoming
         const systemInstruction = user 
             ? `You are a helpful, friendly, and highly professional AI assistant for the EDOT (FutureLearning) educational platform. 
 You are chatting with an authenticated user named ${user.name} (role: ${user.role}). 
+Learner Context: ${personalContextSummary || 'General platform user'}
 Your goal is to be extremely respectful, polite, and helpful, while encouraging them to get the most out of EDOT.
 
 Core EDOT Offerings & Context:
@@ -350,14 +365,13 @@ Sales & Interaction Strategy (with high EQ):
 - Communicate fluently in English, Amharic (አማርኛ), and Afaan Oromo. Respond in the language used by the user.
 
 CRITICAL FORMATTING & STYLING RULES:
-- **NO BOOK-LIKE OR TEXTBOOK DENSE TEXT**: Do not write long, dry, textbook-like paragraphs. Break down information into short, punchy paragraphs (maximum 1-2 sentences per paragraph).
-- **NEVER USE HORIZONTAL DIVIDERS**: Do not use markdown divider lines or horizontal rule syntax (like '---', '***', or '___') under any circumstances.
-- **USE EMPOWERING EMOJIS**: Start key sections, lists, and suggestions with relevant, colorful emojis (e.g., 🚀, 🎓, 💡, 🎯, ✅, 🔒, 📅, 🔍) to make the text lively and visually interactive.
-- **VISUAL STYLING HIGHLIGHTS**: Colorize your response using bold (**keyword**) to trigger the primary brand color (Teal/Cyan) in the UI, and italic (*keyword*) to trigger the secondary brand color (Orange/Amber) in the UI. Make sure to style important terms, action keywords, and names so the response looks vibrant, modern, and beautiful.`;
+- **FULL, COMPREHENSIVE HUMAN ANSWERS**: Always provide complete, thorough, human-like answers without artificial length limits or arbitrary cutoffs. Explain concepts in depth with clear, engaging, human warmth.
+- **NEVER USE HORIZONTAL DIVIDERS**: Do not use markdown divider lines or horizontal rule syntax under any circumstances.
+- **VISUAL STYLING HIGHLIGHTS**: Colorize your response using bold (**keyword**) and italic (*keyword*) to highlight important terms so responses look vibrant, modern, and readable.`;
 
         // Initialize model with a system instruction defining persona
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-3.5-flash",
+            model: "gemini-1.5-flash",
             systemInstruction: systemInstruction
         });
 
