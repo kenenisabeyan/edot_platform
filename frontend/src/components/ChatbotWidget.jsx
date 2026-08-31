@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Bot, User, Loader2, Trash2, QrCode, Maximize2, Minimize2, Mic, MicOff, Volume2, VolumeX, Video } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Loader2, Trash2, QrCode, Maximize2, Minimize2, Mic, MicOff, Volume2, VolumeX, Video, Paperclip, FileText } from 'lucide-react';
 import useThemeMode from '../hooks/useThemeMode';
 import api from '../utils/api';
 import Markdown from 'markdown-to-jsx';
@@ -14,7 +14,9 @@ export default function ChatbotWidget() {
     const [messages, setMessages] = useState([]);
     const [isListening, setIsListening] = useState(false);
     const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(true);
+    const [attachedFile, setAttachedFile] = useState(null);
     const recognitionRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const closeChat = () => {
         setIsOpen(false);
@@ -179,15 +181,36 @@ export default function ChatbotWidget() {
         }
     };
 
-    const sendMessage = async (userMessage) => {
-        if (!userMessage.trim() || isLoading) return;
+    const handleFileSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setAttachedFile({
+            name: file.name,
+            size: (file.size / 1024).toFixed(1) + ' KB',
+            type: file.type,
+            url: URL.createObjectURL(file)
+        });
+    };
 
-        setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const sendMessage = async (userMessage, attachment = null) => {
+        const currentAttachment = attachment || attachedFile;
+        let fullMessage = userMessage.trim();
+        if (currentAttachment) {
+            fullMessage += `\n\n📎 Attached file: ${currentAttachment.name}`;
+        }
+        if (!fullMessage && !currentAttachment) return;
+
+        setMessages(prev => [...prev, {
+            role: 'user',
+            content: fullMessage,
+            attachment: currentAttachment
+        }]);
+        setAttachedFile(null);
         setIsLoading(true);
 
         try {
             const { data } = await api.post('/chatbot/message', {
-                message: userMessage,
+                message: fullMessage,
                 history: messages
             });
 
@@ -208,7 +231,7 @@ export default function ChatbotWidget() {
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!input.trim() && !attachedFile) return;
         const userMsg = input.trim();
         setInput('');
         sendMessage(userMsg);
@@ -454,7 +477,37 @@ export default function ChatbotWidget() {
                         </div>
 
                         <form onSubmit={handleSend} className={`p-3 border-t backdrop-blur-md ${isDarkMode ? 'border-white/10 bg-black/20' : 'border-white/10 bg-white/15'}`}>
+                            {attachedFile && (
+                                <div className="mb-2 px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-between text-xs font-medium text-cyan-300">
+                                    <span className="flex items-center gap-1.5 truncate">
+                                        <Paperclip size={12} />
+                                        <span className="truncate max-w-[200px]">{attachedFile.name}</span>
+                                        <span className="opacity-70 text-[10px]">({attachedFile.size})</span>
+                                    </span>
+                                    <button type="button" onClick={() => setAttachedFile(null)} className="text-cyan-400 hover:text-white font-bold ml-2">
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
                             <div className={`flex items-center gap-2 ${isFullScreen ? 'max-w-3xl mx-auto w-full' : 'w-full'}`}>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    title="Attach File / Image"
+                                    className={`p-2.5 rounded-full transition-all shrink-0 border cursor-pointer ${
+                                        isDarkMode 
+                                            ? 'text-slate-400 hover:text-cyan-300 hover:bg-white/5 bg-white/5 border-white/10' 
+                                            : 'text-slate-600 hover:text-teal-700 hover:bg-black/5 bg-black/5 border-black/10'
+                                    }`}
+                                >
+                                    <Paperclip size={18} />
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setScannerOpen(true)}
