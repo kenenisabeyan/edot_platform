@@ -21,6 +21,7 @@ import { prisma } from '../../../lib/prisma.js';
 import { resolveActiveLearningContext } from './courseContextResolver.js';
 import { resolveInstructorContext, verifyInstructorStudentAccess } from './instructorContextResolver.js';
 import { resolveGuardianContext, verifyGuardianStudentAccess } from './guardianContextResolver.js';
+import { resolveSponsorContext, verifySponsorStudentAccess } from './sponsorContextResolver.js';
 import { ForbiddenError } from '../shared/errors.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -177,7 +178,7 @@ export function translateInternalComplexityToHumanLanguage(rawContext = {}) {
   if (rawContext.profile) {
     const p = rawContext.profile;
     const name = p.user?.name || p.name || 'Learner';
-    const goals = Array.isArray(p.learningGoals) ? p.learningGoals.join(', ') : (p.learningGoals || '');
+    const goals = Array.isArray(p.learningGoals) ? p.learningGoals.join(', ') : (p.learningGoals || p.currentFocus || '');
     clean.identitySummary = `Learner ${name}${goals ? ` with goal: "${goals}"` : ''}.`;
   }
 
@@ -273,6 +274,7 @@ export function translateInternalComplexityToHumanLanguage(rawContext = {}) {
 
 /**
  * Validates cross-role authorization for retrieving user context.
+ * Enforces server-side checks for Student, Instructor, Admin, Guardian, Sponsor.
  *
  * @param {Object} authUser Requesting user from req.user
  * @param {string} targetUserId Target user ID whose context is being requested
@@ -304,7 +306,13 @@ export async function assertContextAuthorization(authUser, targetUserId) {
     return true;
   }
 
-  // Unauthorized cross-user access
+  // Sponsor checking sponsored student access
+  if (reqRole === 'sponsor') {
+    await verifySponsorStudentAccess(reqId, targetId);
+    return true;
+  }
+
+  // Unauthorized cross-user access -> Return HTTP 403 Forbidden
   throw new ForbiddenError(`Forbidden: User ID "${reqId}" (${reqRole}) is not authorized to access context for student ID "${targetId}".`);
 }
 
@@ -400,7 +408,7 @@ export async function resolvePersonalIntelligenceContext({ authUser, targetUserI
       return resolveNextBestAction(targetId);
     }) : Promise.resolve(null),
     needsCareer ? safeFetch(() => prisma.learnerSkillProfile.findFirst({ where: { studentId: targetId } })) : Promise.resolve(null),
-    needsProjects ? safeFetch(() => prisma.projectSubmission.findMany({ where: { studentId: targetId }, take: 5, orderBy: { createdAt: 'desc' } }), []) : Promise.resolve([]),
+    needsProjects ? safeFetch(() => prisma.projectSubmission.findMany({ where: { userId: targetId }, take: 5, orderBy: { createdAt: 'desc' } }), []) : Promise.resolve([]),
     needsOpportunities ? safeFetch(() => prisma.opportunityMatch.findMany({ where: { studentId: targetId }, take: 5, orderBy: { score: 'desc' } }), []) : Promise.resolve([])
   ]);
 
@@ -415,13 +423,23 @@ export async function resolvePersonalIntelligenceContext({ authUser, targetUserI
   // 4. Translate raw complex data into warm, human-centered language
   const humanTranslated = translateInternalComplexityToHumanLanguage(rawContext);
 
-  // 5. Package Recency-Tagged Unified Context Output
+  // 5. Package Recency-Tagged Unified Context Output with Internal Source Traceability
+  const contextSources = ['learning_profile', 'active_learning'];
+  if (needsMastery) contextSources.push('mastery');
+  if (needsSkills) contextSources.push('skills');
+  if (needsProgress) contextSources.push('analytics');
+  if (needsNextAction) contextSources.push('recommendations');
+  if (needsCareer) contextSources.push('career');
+  if (needsProjects) contextSources.push('projects');
+  if (needsOpportunities) contextSources.push('opportunities');
+
   return {
     meta: {
       requestingUserId: authUser.id,
       targetUserId: targetId,
       requestingRole: authUser.role,
       detectedIntents: intents,
+      contextSources,
       resolvedAt: now.toISOString(),
       dataFreshness: rawContext.activeLearning?.lastActivity ? (now - new Date(rawContext.activeLearning.lastActivity) < 24 * 3600 * 1000 ? 'CURRENT' : 'RECENT') : 'HISTORICAL'
     },
@@ -437,3 +455,4 @@ export async function resolvePersonalIntelligenceContext({ authUser, targetUserI
     }
   };
 }
+

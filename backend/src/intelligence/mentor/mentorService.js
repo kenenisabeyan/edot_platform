@@ -36,6 +36,8 @@ import {
   updateConversationSummary,
   assertConversationOwnership
 } from './conversationService.js';
+import { updateDurableLearnerMemory } from '../context/contextMemoryService.js';
+import { eventBus } from '../shared/eventBus.js';
 import { ValidationError, NotFoundError } from '../shared/errors.js';
 
 // ── Core Chat Execution ───────────────────────────────────────────────────────
@@ -63,6 +65,12 @@ export async function executeMentorChat(userId, message, options = {}) {
 
   const { courseId, lessonId, inputType = 'TEXT' } = options;
   let { conversationId } = options;
+
+  // Asynchronously extract long-term goals & preferences without blocking
+  updateDurableLearnerMemory(userId, message.trim()).catch(() => {});
+
+  // Emit event for closed-loop engine
+  eventBus.publish('AI_EXPLANATION_REQUESTED', { userId, conversationId, message: message.trim() });
 
   // ── Step 1: Resolve or Create Conversation ──
   if (conversationId) {
@@ -124,6 +132,11 @@ export async function executeMentorChat(userId, message, options = {}) {
     resolvedActions = await resolveAndValidateActions(userId, rawActions, courseId);
   } catch {
     resolvedActions = normalizeAISuggestions(rawActions);
+  }
+
+  // Enforce Max 1 Primary + Max 2 Secondary (Max 3 total actions)
+  if (Array.isArray(resolvedActions) && resolvedActions.length > 3) {
+    resolvedActions = resolvedActions.slice(0, 3);
   }
 
   // ── Step 12: Persist Mentor Message ──

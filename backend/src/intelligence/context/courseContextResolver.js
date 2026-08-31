@@ -53,7 +53,7 @@ export async function resolveActiveLearningContext(studentId) {
   // Priority 2 & 3: Most recently active course progress / enrollment
   const activeCourseProgress = await prisma.userCourseProgress.findFirst({
     where: { userId: studentId, completed: false },
-    orderBy: { updatedAt: 'desc' },
+    orderBy: { enrolledAt: 'desc' },
     include: { course: { select: { id: true, mainCategory: true } } }
   });
 

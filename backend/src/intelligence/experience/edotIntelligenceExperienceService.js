@@ -6,6 +6,7 @@
 
 import { prisma } from '../../../lib/prisma.js';
 import { assertValidUUID } from '../opportunities/opportunityAuthorizationService.js';
+import { resolvePersonalIntelligenceContext } from '../context/personalIntelligenceContextService.js';
 import {
   generateStudentGreeting,
   translateMasteryStatus,
@@ -21,6 +22,18 @@ import {
 export async function getStudentExperienceOverview(studentId) {
   assertValidUUID(studentId, 'studentId');
 
+  // Resolve Master Personal Context
+  let personalContext = null;
+  try {
+    personalContext = await resolvePersonalIntelligenceContext({
+      authUser: { id: studentId, role: 'student' },
+      targetUserId: studentId,
+      message: 'Overview request'
+    });
+  } catch (ctxErr) {
+    console.warn('[ExperienceOverview] Personal Intelligence Context fallback:', ctxErr.message);
+  }
+
   // Fetch student basic profile
   const user = await prisma.user.findUnique({
     where: { id: studentId },
@@ -28,6 +41,7 @@ export async function getStudentExperienceOverview(studentId) {
   });
 
   const greeting = generateStudentGreeting(user?.name || 'Learner');
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // 1. Failure-Isolated Sub-Domain Data Retrieval

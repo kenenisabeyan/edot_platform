@@ -67,10 +67,28 @@ export function initializeEventSubscribers() {
     await onContentUpdated(payload).catch((err) => console.error('[EventBus] CONTENT_UPDATED error:', err.message));
   });
 
-  eventBus.subscribe('CONTENT_DELETED', async (payload) => {
-    await onContentDeleted(payload).catch((err) => console.error('[EventBus] CONTENT_DELETED error:', err.message));
+  // Conversational Closed-Loop Event Subscribers
+  const aiConversationalEvents = [
+    'AI_PRACTICE_STARTED',
+    'AI_PRACTICE_COMPLETED',
+    'AI_EXPLANATION_REQUESTED',
+    'AI_RECOMMENDATION_ACCEPTED',
+    'AI_RECOMMENDATION_DISMISSED',
+    'LEARNING_PLAN_STARTED',
+    'CAREER_PLAN_STARTED',
+    'PROJECT_PLAN_STARTED'
+  ];
+
+  aiConversationalEvents.forEach((eventType) => {
+    eventBus.subscribe(eventType, async (eventData) => {
+      if (eventData.userId) {
+        await syncLearnerProfile(eventData.userId).catch(() => {});
+        await getLearnerAnalytics(eventData.userId).catch(() => {});
+      }
+    });
   });
 
-  console.log('⚡ EDOT Intelligence Core: Event Subscribers Active (Learner & Content Lifecycles)');
+  console.log('⚡ EDOT Intelligence Core: Event Subscribers Active (Learner, Content & AI Conversational Lifecycles)');
 }
+
 
