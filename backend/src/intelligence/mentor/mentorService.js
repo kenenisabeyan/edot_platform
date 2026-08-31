@@ -1,19 +1,20 @@
 /**
- * EDOT Intelligence — Phase 11
- * AI Mentor Service (Full Pipeline)
+ * EDOT Intelligence — Phase 23
+ * AI Mentor Service (Full Pipeline & Multimodal Real Persistence)
+ * mentorService.js
  *
- * Orchestrates the complete AI Mentor response cycle:
- *   Student Message
+ * Orchestrates the complete AI Mentor response cycle for Text, Voice, and Video turns:
+ *   Student Input (Text/Voice/Video)
+ *     → Client Idempotency Check (clientMessageId)
+ *     → Authorization & Ownership Check
+ *     → Immediate Student Message Database Persistence
  *     → Intent Detection
- *     → Authorization Check
- *     → Secure Context Build (Phases 2, 3, 8, 9, 10)
- *     → Conversation History Load
- *     → Intent-Aware Prompt Build
- *     → AI Provider Call
- *     → Response Parse & Validate
- *     → Action Resolution (Server-Side Validation)
- *     → Persist Student + Mentor Messages
- *     → Return Safe Response DTO
+ *     → Authorized Learning Context Resolution
+ *     → Context Window History Load
+ *     → AI Provider Call with Safe Error Boundaries
+ *     → AI Response Database Persistence (status = ACTIVE or FAILED)
+ *     → Closed-Loop Event Dispatch
+ *     → DTO Return
  */
 
 import { prisma } from '../../../lib/prisma.js';
@@ -34,28 +35,42 @@ import {
   addMentorMessage,
   buildContextWindowHistory,
   updateConversationSummary,
-  assertConversationOwnership
+  assertConversationOwnership,
+  archiveConversation,
+  restoreConversation,
+  deleteConversation,
+  deleteMessage,
+  updateConversationTitle
 } from './conversationService.js';
 import { updateDurableLearnerMemory } from '../context/contextMemoryService.js';
 import { eventBus } from '../shared/eventBus.js';
-import { ValidationError, NotFoundError } from '../shared/errors.js';
+import { ValidationError, NotFoundError, ForbiddenError } from '../shared/errors.js';
+
+// Re-export conversation management APIs
+export {
+  createConversation,
+  getConversations,
+  getConversationWithMessages,
+  archiveConversation,
+  restoreConversation,
+  deleteConversation,
+  deleteMessage,
+  updateConversationTitle
+};
 
 // ── Core Chat Execution ───────────────────────────────────────────────────────
 
 /**
- * Executes a full AI Mentor chat turn within a conversation.
- *
- * Supports both:
- * - Multi-turn: client provides an existing conversationId
- * - Single-shot: no conversationId → creates a new conversation
+ * Executes a context-aware AI Mentor chat turn within a conversation.
  *
  * @param {string} userId
  * @param {string} message
  * @param {object} [options]
  * @param {string} [options.courseId]
  * @param {string} [options.lessonId]
- * @param {string} [options.conversationId] — if provided, continues existing thread
- * @param {string} [options.inputType] — 'TEXT' | 'VOICE'
+ * @param {string} [options.conversationId] — continues existing thread
+ * @param {string} [options.clientMessageId] — idempotency key
+ * @param {string} [options.inputType] — 'TEXT' | 'VOICE' | 'VIDEO'
  * @returns {Promise<object>} Mentor response DTO
  */
 export async function executeMentorChat(userId, message, options = {}) {
@@ -63,84 +78,118 @@ export async function executeMentorChat(userId, message, options = {}) {
     throw new ValidationError('message string is required for AI Mentor chat');
   }
 
-  const { courseId, lessonId, inputType = 'TEXT' } = options;
+  const { courseId, lessonId, clientMessageId, inputType = 'TEXT' } = options;
   let { conversationId } = options;
 
-  // Asynchronously extract long-term goals & preferences without blocking
-  updateDurableLearnerMemory(userId, message.trim()).catch(() => {});
+  // ── Step 1: Idempotency check ──
+  if (conversationId && clientMessageId) {
+    await assertConversationOwnership(userId, conversationId);
+    const existingMsg = await prisma.mentorMessage.findFirst({
+      where: { conversationId, clientMessageId }
+    });
+    if (existingMsg) {
+      // Find associated mentor response if already generated
+      const existingAiMsg = await prisma.mentorMessage.findFirst({
+        where: { conversationId, responseId: existingMsg.id }
+      });
+      return {
+        conversationId,
+        messageId: existingMsg.id,
+        answer: existingAiMsg?.content || 'Your message was saved.',
+        groundingStatus: existingAiMsg?.groundingStatus || 'COURSE_GROUNDED',
+        suggestedActions: existingAiMsg?.suggestedActions || [],
+        isDuplicateResult: true
+      };
+    }
+  }
 
-  // Emit event for closed-loop engine
-  eventBus.publish('AI_EXPLANATION_REQUESTED', { userId, conversationId, message: message.trim() });
-
-  // ── Step 1: Resolve or Create Conversation ──
+  // ── Step 2: Resolve or Create Conversation ──
   if (conversationId) {
     await assertConversationOwnership(userId, conversationId);
   } else {
     const newConvo = await createConversation(userId, {
       courseId,
       lessonId,
-      title: `Chat: ${message.trim().slice(0, 60)}`
+      title: `Chat: ${message.trim().slice(0, 50)}`
     });
     conversationId = newConvo.id;
   }
 
-  // ── Step 2: Intent Detection ──
-  const { intent, confidence: intentConfidence } = detectIntent(message);
+  // Asynchronously extract long-term goals & preferences without blocking
+  updateDurableLearnerMemory(userId, message.trim()).catch(() => {});
+  eventBus.publish('AI_EXPLANATION_REQUESTED', { userId, conversationId, message: message.trim() });
 
-  // ── Step 3: Human Support Check (fast, before AI call) ──
-  const humanSupportSignal = detectHumanSupportNeed(message);
-
-  // ── Step 4: Build Secure Learning Context ──
-  const learningContext = await buildStudentLearningContext(userId, { courseId, lessonId });
-
-  // ── Step 5: Load Conversation History (trimmed context window) ──
-  const conversationHistory = await buildContextWindowHistory(userId, conversationId);
-
-  // ── Step 6: Build Intent-Aware System Prompt ──
-  const systemInstruction = buildMentorSystemInstruction(learningContext, intent, conversationHistory);
-  learningContext.systemInstruction = systemInstruction;
-
-  // ── Step 7: Persist Student Message ──
-  await addStudentMessage(conversationId, message.trim(), {
+  // ── Step 3: Immediately Persist Student Message (DB is source of truth) ──
+  const studentMsg = await addStudentMessage(conversationId, message.trim(), {
+    clientMessageId,
     courseId,
     lessonId,
-    intentType: intent,
-    inputType
+    inputType,
+    messageType: inputType === 'VOICE' ? 'VOICE' : (inputType === 'VIDEO' ? 'VIDEO' : 'TEXT')
   });
 
-  // ── Step 8: Handle Learner Meta Intents Without AI (deterministic) ──
+  // ── Step 4: Intent Detection & Human Support Check ──
+  const { intent, confidence: intentConfidence } = detectIntent(message);
+  const humanSupportSignal = detectHumanSupportNeed(message);
+
+  // ── Step 5: Build Authorized Learning Context & Window History ──
+  const learningContext = await buildStudentLearningContext(userId, { courseId, lessonId });
+  const conversationHistory = await buildContextWindowHistory(userId, conversationId);
+  learningContext.systemInstruction = buildMentorSystemInstruction(learningContext, intent, conversationHistory);
+
+  // ── Step 6: Meta Intent Fast Path (deterministic) ──
   if (isLearnerMetaIntent(intent) && intent === 'WHAT_SHOULD_I_DO_NEXT') {
     return _buildNextActionResponse(userId, conversationId, learningContext, intent, courseId, lessonId);
   }
 
-  // ── Step 9: Call AI Provider ──
-  const aiResult = await defaultAIProvider.chat(message.trim(), learningContext);
+  // ── Step 7: AI Provider Call with Safe Error Handling ──
+  let aiResult;
+  try {
+    aiResult = await defaultAIProvider.chat(message.trim(), learningContext);
+  } catch (err) {
+    console.error('[MentorService] AI Provider call failed:', err.message);
 
-  // ── Step 10: Parse & Validate Response ──
+    // Save failed state AI message so student message is NEVER lost
+    const failedAiMsg = await addMentorMessage(conversationId, 'Your message was saved, but the AI response could not be completed. Click Retry to generate a response.', {
+      courseId,
+      lessonId,
+      intentType: intent,
+      status: 'FAILED'
+    });
+
+    return {
+      conversationId,
+      studentMessageId: studentMsg.id,
+      mentorMessageId: failedAiMsg.id,
+      intent,
+      answer: failedAiMsg.content,
+      isFailed: true,
+      canRetry: true
+    };
+  }
+
+  // ── Step 8: Parse & Validate AI Response ──
   const validated = parseAndValidateMentorResponse(aiResult.rawText, learningContext);
   if (humanSupportSignal) {
     validated.needsHumanSupport = true;
     validated.suggestedNextActions.unshift('Connect with your course instructor or EDOT support');
   }
 
-  // ── Step 11: Server-Side Action Resolution ──
+  // ── Step 9: Server-Side Action Resolution ──
   let resolvedActions;
-  const rawActions = Array.isArray(validated.suggestedNextActions)
-    ? validated.suggestedNextActions
-    : [];
+  const rawActions = Array.isArray(validated.suggestedNextActions) ? validated.suggestedNextActions : [];
   try {
     resolvedActions = await resolveAndValidateActions(userId, rawActions, courseId);
   } catch {
     resolvedActions = normalizeAISuggestions(rawActions);
   }
 
-  // Enforce Max 1 Primary + Max 2 Secondary (Max 3 total actions)
   if (Array.isArray(resolvedActions) && resolvedActions.length > 3) {
     resolvedActions = resolvedActions.slice(0, 3);
   }
 
-  // ── Step 12: Persist Mentor Message ──
-  await addMentorMessage(conversationId, validated.answer, {
+  // ── Step 10: Persist AI Response Message ──
+  const mentorMsg = await addMentorMessage(conversationId, validated.answer, {
     courseId,
     lessonId,
     intentType: intent,
@@ -149,16 +198,16 @@ export async function executeMentorChat(userId, message, options = {}) {
     sources: validated.sources
   });
 
-  // ── Step 13: Update Conversation Summary ──
   if (validated.conversationSummary) {
     await updateConversationSummary(conversationId, validated.conversationSummary);
   }
 
-  // ── Step 14: Persist Legacy MentorSession for analytics ──
   await _persistLegacySession(userId, courseId, lessonId, message, validated, aiResult);
 
   return {
     conversationId,
+    studentMessageId: studentMsg.id,
+    mentorMessageId: mentorMsg.id,
     intent,
     intentConfidence,
     answer: validated.answer,
@@ -171,34 +220,81 @@ export async function executeMentorChat(userId, message, options = {}) {
   };
 }
 
-// ── Conversation Management ───────────────────────────────────────────────────
+// ── Multimodal Voice Turn Execution ──────────────────────────────────────────
 
 /**
- * Starts a new mentor conversation and returns the conversation record.
+ * Executes a Voice Mentor turn within a conversation.
  */
+export async function executeVoiceMentorTurn(userId, params = {}) {
+  const { conversationId, audioUrl, transcript, prompt, clientMessageId, courseId, lessonId } = params;
+  const userText = transcript || prompt || 'Voice input session';
+
+  let convoId = conversationId;
+  if (!convoId) {
+    const convo = await createConversation(userId, {
+      courseId,
+      lessonId,
+      title: `Voice Session: ${userText.slice(0, 40)}`,
+      conversationType: 'VOICE'
+    });
+    convoId = convo.id;
+  }
+
+  // Execute mentor chat turn with VOICE inputType
+  return executeMentorChat(userId, userText, {
+    conversationId: convoId,
+    clientMessageId,
+    courseId,
+    lessonId,
+    inputType: 'VOICE'
+  });
+}
+
+// ── Multimodal Video Turn Execution ──────────────────────────────────────────
+
+/**
+ * Executes a Video Mentor turn within a conversation.
+ */
+export async function executeVideoMentorTurn(userId, params = {}) {
+  const { conversationId, videoUrl, transcript, prompt, clientMessageId, courseId, lessonId } = params;
+  const userText = transcript || prompt || 'Video interaction session';
+
+  let convoId = conversationId;
+  if (!convoId) {
+    const convo = await createConversation(userId, {
+      courseId,
+      lessonId,
+      title: `Video Session: ${userText.slice(0, 40)}`,
+      conversationType: 'VIDEO'
+    });
+    convoId = convo.id;
+  }
+
+  return executeMentorChat(userId, userText, {
+    conversationId: convoId,
+    clientMessageId,
+    courseId,
+    lessonId,
+    inputType: 'VIDEO'
+  });
+}
+
+// ── Conversation Management Wrapper Functions ─────────────────────────────────
+
 export async function startConversation(userId, options = {}) {
   return createConversation(userId, options);
 }
 
-/**
- * Lists all mentor conversations for a student.
- */
-export async function listConversations(userId, limit = 20) {
-  return getConversations(userId, limit);
+export async function listConversations(userId, options = {}) {
+  return getConversations(userId, options);
 }
 
-/**
- * Retrieves a conversation with its messages.
- */
 export async function getConversation(userId, conversationId, messageLimit = 50) {
   return getConversationWithMessages(userId, conversationId, messageLimit);
 }
 
-// ── Session History (Legacy) ──────────────────────────────────────────────────
+// ── Legacy Session History ────────────────────────────────────────────────────
 
-/**
- * Retrieves past mentor sessions for a learner.
- */
 export async function getMentorSessions(userId, limit = 20) {
   return prisma.mentorSession.findMany({
     where: { userId },
@@ -207,9 +303,6 @@ export async function getMentorSessions(userId, limit = 20) {
   });
 }
 
-/**
- * Retrieves a specific mentor session by ID.
- */
 export async function getMentorSessionById(userId, sessionId) {
   const session = await prisma.mentorSession.findFirst({
     where: { sessionId, userId }
@@ -220,9 +313,6 @@ export async function getMentorSessionById(userId, sessionId) {
   return session;
 }
 
-/**
- * Submits student feedback score and comment for a mentor session.
- */
 export async function submitSessionFeedback(userId, sessionId, feedbackScore, feedbackComment) {
   if (feedbackScore === undefined || isNaN(Number(feedbackScore))) {
     throw new ValidationError('feedbackScore number is required');
@@ -247,29 +337,15 @@ export async function submitSessionFeedback(userId, sessionId, feedbackScore, fe
 
 // ── Private Helpers ───────────────────────────────────────────────────────────
 
-/**
- * Builds a deterministic, non-AI "next action" response from the Personal Learning Plan.
- * Used for WHAT_SHOULD_I_DO_NEXT intent to avoid unnecessary AI calls.
- */
 async function _buildNextActionResponse(userId, conversationId, context, intent, courseId, lessonId) {
   const nextAction = context.recommendedNextAction || {
     actionType: 'CONTINUE_CURRENT_LESSON',
     explanation: `Continue working through ${context.currentLessonTitle || 'your current lesson'}.`
   };
 
-  const masteryHighlights = (context.masteryStates || []).slice(0, 3).join('; ');
-  const prerequisiteGaps = (context.prerequisiteGaps || []).slice(0, 2).map(g => g.nodeName || g);
-
   let answer = `Based on your current learning progress in **${context.currentCourseTitle || 'your course'}**, `;
   answer += `your recommended next step is: **${nextAction.actionType.replace(/_/g, ' ')}**.\n\n`;
   answer += nextAction.explanation || '';
-
-  if (masteryHighlights) {
-    answer += `\n\nYour current mastery: ${masteryHighlights}.`;
-  }
-  if (prerequisiteGaps.length > 0) {
-    answer += `\n\nPrerequisite areas to reinforce: ${prerequisiteGaps.join(', ')}.`;
-  }
 
   const suggestedActions = [
     { type: nextAction.actionType, label: nextAction.explanation || nextAction.actionType, verified: true },
@@ -299,10 +375,6 @@ async function _buildNextActionResponse(userId, conversationId, context, intent,
   };
 }
 
-/**
- * Persists a legacy MentorSession record for analytics dashboards.
- * Silently fails to never break the mentor chat pipeline.
- */
 async function _persistLegacySession(userId, courseId, lessonId, message, validated, aiResult) {
   try {
     await prisma.mentorSession.create({
@@ -312,12 +384,12 @@ async function _persistLegacySession(userId, courseId, lessonId, message, valida
         lessonId: lessonId || null,
         promptSummary: message.trim().slice(0, 300),
         responseSummary: validated.answer.slice(0, 400),
-        contextVersion: 'v3.0-phase11',
+        contextVersion: 'v3.0-phase23',
         sources: validated.sources,
         suggestedNextActions: validated.suggestedNextActions,
         confidenceScore: validated.confidence,
         needsHumanSupport: validated.needsHumanSupport,
-        tokenCount: aiResult.tokenCount || 100
+        tokenCount: aiResult?.tokenCount || 100
       }
     });
   } catch (err) {

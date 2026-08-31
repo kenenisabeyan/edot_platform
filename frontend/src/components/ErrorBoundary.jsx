@@ -22,6 +22,10 @@ export default class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
       const errString = this.state.error ? this.state.error.toString() : '';
       const isChunkError =
         errString.includes('Failed to fetch dynamically imported module') ||

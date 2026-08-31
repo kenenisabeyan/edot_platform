@@ -650,19 +650,33 @@ export class VoiceOrchestrator {
   /**
    * Cancel active response for barge-in / speech interruption.
    */
-  static async cancelActiveResponse({ sessionId, responseId }) {
-    if (sessionId) {
-      await prisma.voiceLearningSession.update({
-        where: { id: sessionId },
-        data: { status: 'LISTENING', lastActivityAt: new Date() }
-      }).catch(() => {});
-    }
+  static async cancelResponse({ sessionId, responseId, userId }) {
+    return this.cancelActiveResponse({ sessionId, responseId });
+  }
 
-    return {
-      cancelled: true,
-      responseId,
-      status: 'LISTENING'
-    };
+  /**
+   * Change active conversation mode for a voice session.
+   */
+  static async changeMode({ sessionId, mode, userId }) {
+    if (!sessionId) return null;
+    return prisma.voiceLearningSession.update({
+      where: { id: sessionId },
+      data: { mode, lastActivityAt: new Date() }
+    });
+  }
+
+  /**
+   * List voice sessions for a user.
+   */
+  static async listSessions({ userId, courseId, limit = 10 }) {
+    const where = { learnerId: userId };
+    if (courseId) where.courseId = courseId;
+
+    return prisma.voiceLearningSession.findMany({
+      where,
+      orderBy: { updatedAt: 'desc' },
+      take: Math.min(Number(limit) || 10, 50)
+    });
   }
 
   /**

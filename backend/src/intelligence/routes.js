@@ -22,6 +22,7 @@ import performanceRoutes from './performance/performanceRoutes.js';
 import productionRoutes from './production/productionRoutes.js';
 import hyperscaleRoutes from './hyperscale/hyperscaleRoutes.js';
 import domainRoutes from './domain/domainRoutes.js';
+import voiceRoutes from './voice/voiceRoutes.js';
 import { intelligenceErrorHandler } from './shared/errors.js';
 
 const router = express.Router();
@@ -31,6 +32,7 @@ router.use('/events', eventRoutes);
 router.use('/profile', profileRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/mentor', mentorRoutes);
+router.use('/voice', voiceRoutes);
 router.use('/recommendations', recommendationRoutes);
 router.use('/courses', courseIntelligenceRoutes);
 router.use('/career', careerRoutes);

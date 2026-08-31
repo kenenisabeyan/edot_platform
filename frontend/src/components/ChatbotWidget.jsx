@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Bot, User, Loader2, Trash2, QrCode, Maximize2, Minimize2 } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Loader2, Trash2, QrCode, Maximize2, Minimize2, Mic, MicOff, Volume2, VolumeX, Video } from 'lucide-react';
 import useThemeMode from '../hooks/useThemeMode';
 import api from '../utils/api';
 import Markdown from 'markdown-to-jsx';
@@ -12,6 +12,9 @@ export default function ChatbotWidget() {
     const [isOpen, setIsOpen] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [messages, setMessages] = useState([]);
+    const [isListening, setIsListening] = useState(false);
+    const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(true);
+    const recognitionRef = useRef(null);
 
     const closeChat = () => {
         setIsOpen(false);
@@ -124,6 +127,58 @@ export default function ChatbotWidget() {
         };
     }, [messages]);
 
+    const speakReply = (text) => {
+        if (!isVoiceOutputEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+        try {
+            window.speechSynthesis.cancel();
+            const cleanText = (text || '').replace(/[*_#`~]/g, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.rate = 1.0;
+            utterance.lang = 'en-US';
+            window.speechSynthesis.speak(utterance);
+        } catch {
+            // Non-critical fallback
+        }
+    };
+
+    const toggleVoiceInput = () => {
+        if (typeof window === 'undefined' || !('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+            alert('Voice speech recognition is not supported in your browser.');
+            return;
+        }
+
+        if (isListening) {
+            recognitionRef.current?.stop();
+            setIsListening(false);
+            return;
+        }
+
+        try {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const rec = new SpeechRecognition();
+            rec.continuous = false;
+            rec.interimResults = false;
+            rec.lang = 'en-US';
+
+            rec.onstart = () => setIsListening(true);
+            rec.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                if (transcript) {
+                    setInput(transcript);
+                    sendMessage(transcript);
+                }
+            };
+            rec.onerror = () => setIsListening(false);
+            rec.onend = () => setIsListening(false);
+
+            recognitionRef.current = rec;
+            rec.start();
+        } catch (err) {
+            console.error('Speech recognition error:', err);
+            setIsListening(false);
+        }
+    };
+
     const sendMessage = async (userMessage) => {
         if (!userMessage.trim() || isLoading) return;
 
@@ -138,6 +193,7 @@ export default function ChatbotWidget() {
 
             if (data.success) {
                 setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+                speakReply(data.reply);
             } else {
                 setMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I encountered an error. " + (data.message || "") }]);
             }
@@ -417,20 +473,40 @@ export default function ChatbotWidget() {
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     placeholder="Message EDOT Assistant..."
-                                    className={`w-full py-3 pl-4 pr-12 !rounded-full text-sm focus:outline-none transition-all ${
+                                    className={`w-full py-3 pl-4 pr-24 !rounded-full text-sm focus:outline-none transition-all ${
                                         isDarkMode 
                                             ? 'bg-gradient-to-r from-white/5 to-white/10 border border-white/20 focus:border-cyan-400 text-white placeholder-white/60' 
                                             : 'bg-gradient-to-r from-black/5 to-black/10 border border-black/15 focus:border-teal-600 text-slate-800 placeholder-slate-500 shadow-inner'
                                     }`}
                                 />
 
-                                <button
-                                    type="submit"
-                                    disabled={!input.trim() || isLoading}
-                                    className={`absolute right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all ${!input.trim() || isLoading ? 'bg-slate-700/30 text-slate-400 opacity-50 cursor-not-allowed' : 'bg-gradient-to-tr from-sky-500 to-cyan-400 text-white shadow-md hover:scale-105 active:scale-95'}`}
-                                >
-                                    <Send size={14} />
-                                </button>
+                                <div className="absolute right-2 flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsVoiceOutputEnabled(!isVoiceOutputEnabled)}
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${isVoiceOutputEnabled ? 'text-cyan-400 hover:bg-white/10' : 'text-slate-500 hover:bg-white/10'}`}
+                                        title={isVoiceOutputEnabled ? 'Mute AI Voice' : 'Enable AI Voice'}
+                                    >
+                                        {isVoiceOutputEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={toggleVoiceInput}
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${isListening ? 'bg-rose-500 text-white animate-pulse' : 'text-cyan-400 hover:bg-white/10'}`}
+                                        title={isListening ? 'Stop Voice Recording' : 'Start Voice Input'}
+                                    >
+                                        {isListening ? <MicOff size={13} /> : <Mic size={13} />}
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        disabled={!input.trim() || isLoading}
+                                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${!input.trim() || isLoading ? 'bg-slate-700/30 text-slate-400 opacity-50 cursor-not-allowed' : 'bg-gradient-to-tr from-sky-500 to-cyan-400 text-white shadow-md hover:scale-105 active:scale-95'}`}
+                                    >
+                                        <Send size={13} />
+                                    </button>
+                                </div>
                             </div>
                             </div>
                         </form>

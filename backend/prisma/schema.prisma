@@ -372,24 +372,36 @@ model MentorConversation {
   contextLessonId   String?
   topic             String?
   summary           String?
+  status            String   @default("ACTIVE") // ACTIVE, ARCHIVED, DELETED
+  conversationType  String   @default("MIXED")  // TEXT, VOICE, VIDEO, MIXED
   messageCount      Int      @default(0)
   lastMessageAt     DateTime @default(now())
+  deletedAt         DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   messages          MentorMessage[]
 
   @@index([userId])
+  @@index([userId, status])
+  @@index([lastMessageAt])
 }
 
 model MentorMessage {
   id                String   @id @default(uuid())
-  conversationId     String
+  conversationId    String
   conversation      MentorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role              String
+  clientMessageId   String?
+  role              String   // STUDENT, MENTOR, SYSTEM
+  sender            String?  // STUDENT, AI, SYSTEM
   content           String
-  inputType         String   @default("TEXT") // TEXT, VOICE
-  outputType        String   @default("TEXT") // TEXT, VOICE
+  messageType       String   @default("TEXT") // TEXT, VOICE, VIDEO, IMAGE, FILE, SYSTEM
+  inputType         String   @default("TEXT") // TEXT, VOICE, VIDEO
+  outputType        String   @default("TEXT") // TEXT, VOICE, VIDEO
+  audioUrl          String?
+  videoUrl          String?
+  transcript        String?
+  metadata          Json?
   courseId          String?
   sectionId         String?
   lessonId          String?
@@ -398,9 +410,13 @@ model MentorMessage {
   groundingStatus   String?  // COURSE_GROUNDED | EDOT_KNOWLEDGE_GROUNDED | GENERAL_EDUCATIONAL | LIMITED_CONTEXT
   suggestedActions  Json?
   sources           Json?
+  status            String   @default("ACTIVE") // ACTIVE, DELETED, FAILED
+  deletedAt         DateTime?
   createdAt         DateTime @default(now())
 
   @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@index([clientMessageId])
   @@index([responseId])
 }
 
