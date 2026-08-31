@@ -20,7 +20,9 @@ import {
   CheckCircle2, 
   Loader2,
   MessageSquare,
-  Mic
+  Mic,
+  Video,
+  Brain
 } from 'lucide-react';
 import api from '../utils/api.js';
 import ContinuousVoiceMentorDrawer from './ContinuousVoiceMentorDrawer.jsx';
@@ -54,7 +56,9 @@ export default function ContextualMentorDrawer({
     if (externalOnClose) externalOnClose();
   };
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const [activeModality, setActiveModality] = useState('TEXT'); // 'TEXT', 'VOICE', 'VIDEO'
   const [inputMessage, setInputMessage] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState({});
   const [messages, setMessagesState] = useState(persistentTextMessages);
   
   const setMessages = (updater) => {
@@ -179,32 +183,23 @@ export default function ContextualMentorDrawer({
             : 'bg-gradient-to-b from-white via-indigo-50/40 to-slate-50 border-l border-indigo-200 text-slate-900 shadow-indigo-500/20'
         }`}>
           {/* Drawer Header */}
-          <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'bg-white/5 border-white/10 backdrop-blur-md' : 'bg-white/80 border-indigo-100 backdrop-blur-md'}`}>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20 flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
+          <div className={`p-4 border-b flex flex-col gap-3 ${isDarkMode ? 'bg-white/5 border-white/10 backdrop-blur-md' : 'bg-white/80 border-indigo-100 backdrop-blur-md'}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-blue-600 text-white shadow-md shadow-cyan-500/20 flex items-center justify-center">
+                  <Brain className="w-5 h-5 animate-pulse text-cyan-200" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm tracking-tight flex items-center gap-1.5">
+                    <span>EDOT AI MENTOR</span>
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-mono">3.6 Flash</span>
+                  </h3>
+                  <p className="text-[11px] font-bold text-cyan-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Conversation Brain & Intelligence Context
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-black text-sm tracking-tight flex items-center gap-1.5">
-                  <span>EDOT AI Mentor</span>
-                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-mono">3.6 Flash</span>
-                </h3>
-                <p className="text-[11px] font-bold text-cyan-400">
-                  Continuous Voice & Text Learning Assistant
-                </p>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsVoiceOpen(true)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/20 hover:scale-105 active:scale-95 cursor-pointer"
-                title="Launch Continuous AI Voice Mentor"
-              >
-                <Mic className="w-3.5 h-3.5" />
-                Voice Mode
-              </button>
               <button
                 type="button"
                 onClick={handleClose}
@@ -212,6 +207,62 @@ export default function ContextualMentorDrawer({
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Multimodal Modality Switcher (Text / Voice / Video under ONE Continuous Conversation) */}
+            <div className={`p-1.5 rounded-2xl flex items-center justify-between border ${isDarkMode ? 'bg-slate-900/80 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+              <button
+                type="button"
+                onClick={() => setActiveModality('TEXT')}
+                className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${activeModality === 'TEXT' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Text</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveModality('VOICE');
+                  setIsVoiceOpen(true);
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${activeModality === 'VOICE' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                <Mic className="w-3.5 h-3.5" />
+                <span>Voice</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveModality('VIDEO');
+                  setMessages(prev => [
+                    ...prev,
+                    {
+                      id: `video-msg-${Date.now()}`,
+                      sender: 'mentor',
+                      answer: '📹 Video Mentor Mode Activated: Visual Concept Breakdown & Interactive Demonstration ready.',
+                      sources: ['EDOT Multimodal Video Engine'],
+                      isVideoTurn: true,
+                      videoUrl: 'https://cdn.edot.org/video/sample_code_walkthrough.mp4',
+                      confidence: 0.99,
+                      timestamp: new Date()
+                    }
+                  ]);
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${activeModality === 'VIDEO' ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>Video</span>
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] uppercase font-mono tracking-wider text-cyan-300/80 px-1">
+              <span>Modality: {activeModality}</span>
+              <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                ONE CONTINUOUS CONVERSATION
+              </span>
             </div>
           </div>
 

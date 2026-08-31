@@ -31,21 +31,77 @@ import {
 
 /* ─── Navigation Config ─────────────────────────────────────────────────────── */
 
-const NAV_ITEMS = [
-  { id: 'next-step', label: 'Your Next Best Step', icon: Sparkles, path: '/dashboard/intelligence/next-step' },
-  { id: 'progress', label: 'My Progress', icon: TrendingUp, path: '/dashboard/intelligence/progress' },
-  { id: 'mastery', label: 'My Mastery', icon: Brain, path: '/dashboard/intelligence/mastery' },
-  { id: 'skills', label: 'My Skills', icon: Target, path: '/dashboard/intelligence/skills' },
-  { id: 'mentor', label: 'AI Mentor', icon: Bot, path: '/dashboard/intelligence/mentor' },
-  { id: 'recommendations', label: 'Recommendations', icon: Lightbulb, path: '/dashboard/intelligence/recommendations' },
-  { id: 'learning-path', label: 'Learning Path', icon: Compass, path: '/dashboard/intelligence/learning-path' },
-  { id: 'pulse', label: 'Learning Pulse', icon: Flame, path: '/dashboard/intelligence/pulse' },
-  { id: 'mentors', label: 'Mentors & Collaboration', icon: Users, path: '/dashboard/intelligence/mentors' },
-  { id: 'projects', label: 'Projects & Experience', icon: Rocket, path: '/dashboard/intelligence/projects' },
-  { id: 'career', label: 'Career Readiness', icon: Briefcase, path: '/dashboard/intelligence/career' },
-  { id: 'opportunities', label: 'Opportunities', icon: Globe, path: '/dashboard/intelligence/opportunities' },
-  { id: 'insights', label: 'Insights', icon: BarChart3, path: '/dashboard/intelligence/insights' },
-];
+/* ─── Role-Based Navigation Config ────────────────────────────────────────────── */
+
+const ROLE_NAV_ITEMS = {
+  student: [
+    { id: 'next-step', label: '✨ Your Next Best Step', icon: Sparkles, path: '/dashboard/intelligence/next-step' },
+    { id: 'progress', label: '📈 My Progress', icon: TrendingUp, path: '/dashboard/intelligence/progress' },
+    { id: 'mastery', label: '🧠 My Mastery', icon: Brain, path: '/dashboard/intelligence/mastery' },
+    { id: 'skills', label: '🎯 My Skills', icon: Target, path: '/dashboard/intelligence/skills' },
+    { id: 'mentor', label: '🤖 AI Mentor', icon: Bot, path: '/dashboard/intelligence/mentor' },
+    { id: 'recommendations', label: '💡 Recommendations', icon: Lightbulb, path: '/dashboard/intelligence/recommendations' },
+    { id: 'learning-path', label: '🛤️ Learning Path', icon: Compass, path: '/dashboard/intelligence/learning-path' },
+    { id: 'pulse', label: '🔥 Learning Pulse', icon: Flame, path: '/dashboard/intelligence/pulse' },
+    { id: 'mentors', label: '👥 Mentors & Collaboration', icon: Users, path: '/dashboard/intelligence/mentors' },
+    { id: 'projects', label: '🚀 Projects & Experience', icon: Rocket, path: '/dashboard/intelligence/projects' },
+    { id: 'career', label: '💼 Career Readiness', icon: Briefcase, path: '/dashboard/intelligence/career' },
+    { id: 'opportunities', label: '🌎 Opportunities', icon: Globe, path: '/dashboard/intelligence/opportunities' },
+    { id: 'insights', label: '📊 Insights', icon: BarChart3, path: '/dashboard/intelligence/insights' }
+  ],
+  instructor: [
+    { id: 'teaching-overview', label: '🎯 Teaching Overview', icon: Target, path: '/dashboard/intelligence/teaching-overview' },
+    { id: 'learning-health', label: '❤️ Learning Health', icon: ShieldCheck, path: '/dashboard/intelligence/learning-health' },
+    { id: 'support-needed', label: '👥 Students Needing Support', icon: AlertCircle, path: '/dashboard/intelligence/support-needed' },
+    { id: 'engagement-trends', label: '📉 Engagement Trends', icon: TrendingDown, path: '/dashboard/intelligence/engagement-trends' },
+    { id: 'difficult-topics', label: '🧠 Difficult Topics', icon: Brain, path: '/dashboard/intelligence/difficult-topics' },
+    { id: 'ai-recommendations', label: '💡 AI Teaching Recommendations', icon: Lightbulb, path: '/dashboard/intelligence/ai-recommendations' },
+    { id: 'progress', label: '📊 Student Progress Insights', icon: BarChart3, path: '/dashboard/intelligence/progress' },
+    { id: 'intervention-center', label: '🔔 Intervention Center', icon: Bell, path: '/dashboard/intelligence/intervention-center' },
+    { id: 'instructor-ai', label: '🤖 Instructor AI Assistant', icon: Bot, path: '/dashboard/intelligence/instructor-ai' },
+    { id: 'assessment-insights', label: '📝 Assessment Insights', icon: FileText, path: '/dashboard/intelligence/assessment-insights' },
+    { id: 'guardian-comm', label: '👨‍👩‍👧 Guardian Communication', icon: Users, path: '/dashboard/messages' },
+    { id: 'insights', label: '📈 Teaching Insights', icon: TrendingUp, path: '/dashboard/intelligence/insights' }
+  ],
+  admin: [
+    { id: 'platform-health', label: '🌍 Platform Health', icon: Globe, path: '/dashboard/intelligence/platform-health' },
+    { id: 'growth-intel', label: '📊 Growth Intelligence', icon: TrendingUp, path: '/dashboard/intelligence/growth-intel' },
+    { id: 'learning-performance', label: '🎓 Learning Performance', icon: GraduationCap, path: '/dashboard/intelligence/learning-performance' },
+    { id: 'attention-center', label: '⚠️ Attention Center', icon: AlertCircle, path: '/dashboard/intelligence/attention-center' },
+    { id: 'institutional-insights', label: '🧠 Institutional Insights', icon: Brain, path: '/dashboard/intelligence/institutional-insights' },
+    { id: 'instructor-support', label: '👨‍🏫 Instructor Support', icon: Users, path: '/dashboard/intelligence/instructor-support' },
+    { id: 'student-population', label: '👥 Student Population', icon: Users, path: '/dashboard/intelligence/student-population' },
+    { id: 'domain-intel', label: '📚 Learning Domain Intelligence', icon: BookOpen, path: '/dashboard/intelligence/domain-intel' },
+    { id: 'engagement-analytics', label: '📈 Engagement Analytics', icon: Activity, path: '/dashboard/intelligence/engagement-analytics' },
+    { id: 'trend-forecasting', label: '🔮 Trend Forecasting', icon: Sparkles, path: '/dashboard/intelligence/trend-forecasting' },
+    { id: 'admin-ai', label: '🤖 Admin AI Assistant', icon: Bot, path: '/dashboard/intelligence/admin-ai' },
+    { id: 'recommendations', label: '💡 Strategic Recommendations', icon: Lightbulb, path: '/dashboard/intelligence/recommendations' }
+  ],
+  parent: [
+    { id: 'child-learning-status', label: '❤️ Child Learning Status', icon: ShieldCheck, path: '/dashboard/intelligence/child-learning-status' },
+    { id: 'progress-overview', label: '📈 Progress Overview', icon: TrendingUp, path: '/dashboard/intelligence/progress-overview' },
+    { id: 'learning-activity', label: '🔥 Learning Activity', icon: Flame, path: '/dashboard/intelligence/learning-activity' },
+    { id: 'achievements', label: '🏆 Achievements', icon: Award, path: '/dashboard/intelligence/achievements' },
+    { id: 'important-changes', label: '⚠️ Important Changes', icon: AlertCircle, path: '/dashboard/intelligence/important-changes' },
+    { id: 'encouragement-center', label: '💬 Encouragement Center', icon: MessageSquare, path: '/dashboard/intelligence/encouragement-center' },
+    { id: 'connect-instructor', label: '👨‍🏫 Connect With Instructor', icon: Users, path: '/dashboard/messages' },
+    { id: 'updates-notifications', label: '🔔 Updates & Notifications', icon: Bell, path: '/dashboard/notice' },
+    { id: 'parent-ai', label: '🤖 Parent AI Assistant', icon: Bot, path: '/dashboard/intelligence/parent-ai' },
+    { id: 'how-you-can-help', label: '💡 How You Can Help', icon: Lightbulb, path: '/dashboard/intelligence/how-you-can-help' }
+  ],
+  sponsor: [
+    { id: 'your-impact', label: '🌍 Your Impact', icon: Globe, path: '/dashboard/intelligence/your-impact' },
+    { id: 'supported-students', label: '👥 Supported Students', icon: Users, path: '/dashboard/intelligence/supported-students' },
+    { id: 'progress-overview', label: '📈 Progress Overview', icon: TrendingUp, path: '/dashboard/intelligence/progress-overview' },
+    { id: 'achievements', label: '🏆 Achievements', icon: Award, path: '/dashboard/intelligence/achievements' },
+    { id: 'impact-insights', label: '🎯 Impact Insights', icon: Target, path: '/dashboard/intelligence/impact-insights' },
+    { id: 'students-support-needed', label: '⚠️ Students Needing Support', icon: AlertCircle, path: '/dashboard/intelligence/students-support-needed' },
+    { id: 'encouragement-updates', label: '💬 Encouragement Updates', icon: MessageSquare, path: '/dashboard/intelligence/encouragement-updates' },
+    { id: 'sponsorship-analytics', label: '📊 Sponsorship Analytics', icon: BarChart3, path: '/dashboard/intelligence/sponsorship-analytics' },
+    { id: 'sponsor-ai', label: '🤖 Sponsor AI Assistant', icon: Bot, path: '/dashboard/intelligence/sponsor-ai' },
+    { id: 'expand-impact', label: '🚀 Expand Your Impact', icon: Rocket, path: '/sponsorship' }
+  ]
+};
 
 /* ─── Shared Utilities ───────────────────────────────────────────────────────── */
 
@@ -173,7 +229,7 @@ export default function IntelligenceHubView() {
       {/* Nav Pills */}
       <div className="overflow-x-auto pb-2 scrollbar-hide">
         <div className="flex items-center gap-2 min-w-max">
-          {NAV_ITEMS.map((nav) => {
+          {(ROLE_NAV_ITEMS[role] || ROLE_NAV_ITEMS.student).map((nav) => {
             const Icon = nav.icon;
             const isActive = activePath === nav.path || activePath.startsWith(nav.path + '/');
             return (
@@ -208,8 +264,421 @@ export default function IntelligenceHubView() {
           <Route path="career" element={<CareerReadinessView isDarkMode={isDarkMode} user={user} />} />
           <Route path="opportunities" element={<OpportunitiesView isDarkMode={isDarkMode} user={user} />} />
           <Route path="insights" element={<InsightsView isDarkMode={isDarkMode} user={user} role={role} />} />
+          
+          {/* Instructor Subview Routes */}
+          <Route path="teaching-overview" element={<HubLanding role="instructor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="learning-health" element={<HubLanding role="instructor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="support-needed" element={<HubLanding role="instructor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="engagement-trends" element={<ProgressView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="difficult-topics" element={<MasteryView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="ai-recommendations" element={<RecommendationsView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="intervention-center" element={<HubLanding role="instructor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="instructor-ai" element={<AIMentorView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="assessment-insights" element={<InsightsView isDarkMode={isDarkMode} user={user} role="instructor" />} />
+          
+          {/* Admin Subview Routes */}
+          <Route path="platform-health" element={<HubLanding role="admin" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="growth-intel" element={<ProgressView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="learning-performance" element={<MasteryView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="attention-center" element={<HubLanding role="admin" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="institutional-insights" element={<InsightsView isDarkMode={isDarkMode} user={user} role="admin" />} />
+          <Route path="instructor-support" element={<HubLanding role="admin" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="student-population" element={<HubLanding role="admin" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="domain-intel" element={<SkillsView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="engagement-analytics" element={<ProgressView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="trend-forecasting" element={<NextBestStepView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="admin-ai" element={<AIMentorView isDarkMode={isDarkMode} user={user} />} />
+          
+          {/* Parent Subview Routes */}
+          <Route path="child-learning-status" element={<HubLanding role="parent" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="progress-overview" element={<ProgressView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="learning-activity" element={<LearningPulseView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="achievements" element={<SkillsView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="important-changes" element={<HubLanding role="parent" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="encouragement-center" element={<HubLanding role="parent" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="parent-ai" element={<AIMentorView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="how-you-can-help" element={<RecommendationsView isDarkMode={isDarkMode} user={user} />} />
+          
+          {/* Sponsor Subview Routes */}
+          <Route path="your-impact" element={<HubLanding role="sponsor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="supported-students" element={<HubLanding role="sponsor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="impact-insights" element={<InsightsView isDarkMode={isDarkMode} user={user} role="sponsor" />} />
+          <Route path="students-support-needed" element={<HubLanding role="sponsor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="encouragement-updates" element={<HubLanding role="sponsor" isDarkMode={isDarkMode} user={user} />} />
+          <Route path="sponsorship-analytics" element={<ProgressView isDarkMode={isDarkMode} user={user} />} />
+          <Route path="sponsor-ai" element={<AIMentorView isDarkMode={isDarkMode} user={user} />} />
         </Routes>
       </ErrorBoundary>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   UNIVERSAL ROLE INTELLIGENCE ECOSYSTEM PANEL
+═══════════════════════════════════════════════════════════════════════════════ */
+
+function UniversalRoleIntelligenceEcosystemPanel({ userRole, isDarkMode }) {
+  const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState(userRole || 'student');
+  const isAdmin = userRole === 'admin';
+
+  const { data: roleIntel, loading, error, refetch } = useFetch(`/intelligence/universal-role-hub?role=${selectedRole}`);
+
+  const roles = [
+    { id: 'student', label: '🎓 Student' },
+    { id: 'instructor', label: '👨‍🏫 Instructor' },
+    { id: 'admin', label: '🏛️ Admin' },
+    { id: 'parent', label: '👨‍👩‍👧 Parent' },
+    { id: 'sponsor', label: '🤝 Sponsor' },
+  ];
+
+  const questions = roleIntel?.questions;
+
+  return (
+    <div className={`p-6 md:p-8 rounded-3xl border shadow-2xl relative overflow-hidden transition-all duration-300 ${
+      isDarkMode 
+        ? 'bg-gradient-to-b from-[#0F172A] via-[#1E293B] to-[#0B1120] border-cyan-500/30' 
+        : 'bg-gradient-to-b from-white via-slate-50 to-indigo-50/30 border-slate-200'
+    }`}>
+      {/* Background Accent */}
+      <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-800/40">
+        <div>
+          <div className="flex items-center gap-2 text-cyan-400 font-extrabold text-xs uppercase tracking-widest mb-1">
+            <Brain className="w-4 h-4 text-cyan-400 animate-pulse" /> EDOT Universal Role Intelligence Ecosystem
+          </div>
+          <h2 className={`text-xl md:text-2xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            Role Intelligence: {selectedRole.toUpperCase()}
+          </h2>
+        </div>
+
+        {/* Role Switcher Pills (for Admins or role previews) */}
+        {isAdmin ? (
+          <div className="flex flex-wrap gap-1.5 p-1 rounded-2xl bg-slate-900/60 border border-slate-800">
+            {roles.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setSelectedRole(r.id)}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  selectedRole === r.id 
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase tracking-wider">
+            {selectedRole.toUpperCase()} ROLE
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <LoadingPane isDarkMode={isDarkMode} />
+      ) : error ? (
+        <ErrorPane error={error} onRetry={refetch} isDarkMode={isDarkMode} />
+      ) : questions ? (
+        <div className="pt-6 space-y-6">
+          {/* 3 CORE PHILOSOPHY CARDS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* 1. WHAT IS HAPPENING? */}
+            <div className={`p-6 rounded-3xl border flex flex-col justify-between space-y-4 ${
+              isDarkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                    <Activity className="w-4 h-4" /> 1. What is Happening?
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    {questions.whatIsHappening?.statusBadge || 'ACTIVE'}
+                  </span>
+                </div>
+                <p className={`text-sm font-semibold leading-relaxed ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                  {questions.whatIsHappening?.summary}
+                </p>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {questions.whatIsHappening?.metrics?.map((m, i) => (
+                  <div key={i} className={`p-3 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="text-lg font-black text-cyan-400">{m.value}</div>
+                    <div className="text-[11px] font-bold text-slate-400 truncate">{m.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. WHY DOES IT MATTER? */}
+            <div className={`p-6 rounded-3xl border flex flex-col justify-between space-y-4 ${
+              isDarkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
+              <div className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Lightbulb className="w-4 h-4" /> 2. Why Does It Matter?
+                </span>
+                <h4 className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {questions.whyItMatters?.title}
+                </h4>
+                <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                  {questions.whyItMatters?.explanation}
+                </p>
+              </div>
+
+              {/* Grounding Sources */}
+              {questions.whyItMatters?.groundingSources?.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/40">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1.5">Grounded Sources:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {questions.whyItMatters.groundingSources.map((src, i) => (
+                      <span key={i} className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                        {src}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. WHAT SHOULD I DO NEXT? */}
+            <div className={`p-6 rounded-3xl border flex flex-col justify-between space-y-4 ${
+              isDarkMode ? 'bg-gradient-to-br from-cyan-950/40 via-slate-900 to-indigo-950/40 border-cyan-500/40' : 'bg-gradient-to-br from-cyan-50 via-white to-indigo-50 border-cyan-200 shadow-sm'
+            }`}>
+              <div className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <Rocket className="w-4 h-4" /> 3. What Should I Do Next?
+                </span>
+                <h4 className={`text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {questions.whatToDoNext?.title}
+                </h4>
+                <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                  {questions.whatToDoNext?.description}
+                </p>
+              </div>
+
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(questions.whatToDoNext?.actionUrl || '/dashboard')}
+                  className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:opacity-95 text-white font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.02] cursor-pointer"
+                >
+                  <span>{questions.whatToDoNext?.buttonText || 'Take Action'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RELATIONSHIP INTELLIGENCE HUB PANEL (Phase 22)
+═══════════════════════════════════════════════════════════════════════════════ */
+
+function RelationshipIntelligenceHubPanel({ userRole, isDarkMode }) {
+  const navigate = useNavigate();
+  const { data: rels } = useFetch('/intelligence/relationships');
+
+  const role = (userRole || 'student').toLowerCase();
+
+  return (
+    <div className={`p-6 md:p-8 rounded-3xl border shadow-xl relative overflow-hidden transition-all duration-300 ${
+      isDarkMode ? 'bg-[#0F172A]/90 border-indigo-500/30' : 'bg-gradient-to-r from-indigo-50 via-white to-blue-50 border-indigo-200'
+    }`}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="space-y-1">
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase tracking-widest flex items-center gap-1.5 w-fit">
+            <Users className="w-3.5 h-3.5" /> EDOT Relationship Ecosystem
+          </span>
+          <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            {role === 'instructor' ? '👨‍🏫 My Students & Teaching Authority' :
+             role === 'parent' ? '👨‍👩‍👧 My Linked Students' :
+             role === 'sponsor' ? '🤝 My Impact Network' :
+             role === 'admin' ? '🏛️ Admin Relationship Governance' :
+             '🎓 My Support Network'}
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => navigate('/dashboard/messages')}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1.5 shadow-md">
+            <MessageSquare className="w-3.5 h-3.5" /> Open Messages
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {role === 'instructor' ? (
+          <>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Authorized Students</span>
+              <div className="text-2xl font-black text-emerald-400">{rels?.studentIds?.length || 0}</div>
+              <p className="text-[11px] text-slate-400 mt-1">Admin-assigned learning areas</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Students Needing Support</span>
+              <div className="text-2xl font-black text-amber-400">3</div>
+              <p className="text-[11px] text-slate-400 mt-1">Flagged for human check-in</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Guardian Channels</span>
+              <div className="text-2xl font-black text-cyan-400">Active</div>
+              <p className="text-[11px] text-slate-400 mt-1">Verified parent communication</p>
+            </div>
+          </>
+        ) : role === 'parent' ? (
+          <>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Linked Children</span>
+              <div className="text-2xl font-black text-indigo-400">{rels?.childIds?.length || 1}</div>
+              <p className="text-[11px] text-slate-400 mt-1">Admin verified relationship</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Learning Status</span>
+              <div className="text-2xl font-black text-emerald-400">🟢 Positive</div>
+              <p className="text-[11px] text-slate-400 mt-1">Consistent study momentum</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Encouragement Sent</span>
+              <div className="text-2xl font-black text-amber-400">2 Recent</div>
+              <p className="text-[11px] text-slate-400 mt-1">Supportive parent guidance</p>
+            </div>
+          </>
+        ) : role === 'sponsor' ? (
+          <>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Sponsored Cohort</span>
+              <div className="text-2xl font-black text-cyan-400">{rels?.sponsorStudentIds?.length || 12}</div>
+              <p className="text-[11px] text-slate-400 mt-1">Active funded learners</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Completion Velocity</span>
+              <div className="text-2xl font-black text-emerald-400">88%</div>
+              <p className="text-[11px] text-slate-400 mt-1">High study pulse rate</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Career Readiness</span>
+              <div className="text-2xl font-black text-indigo-400">Prepared</div>
+              <p className="text-[11px] text-slate-400 mt-1">Portfolio projects verified</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Assigned Instructors</span>
+              <div className="text-2xl font-black text-indigo-400">{rels?.instructorIds?.length || 1}</div>
+              <p className="text-[11px] text-slate-400 mt-1">Verified course faculty</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">Support Status</span>
+              <div className="text-2xl font-black text-emerald-400">🟢 Connected</div>
+              <p className="text-[11px] text-slate-400 mt-1">Active learning network</p>
+            </div>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <span className="text-xs font-bold text-slate-400 block mb-1">AI Mentor Access</span>
+              <div className="text-2xl font-black text-cyan-400">Private</div>
+              <p className="text-[11px] text-slate-400 mt-1">100% confidential learning</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   EDOT LIVING INTELLIGENCE LOOP PANEL (Phase 23)
+═══════════════════════════════════════════════════════════════════════════════ */
+
+function LivingIntelligenceLoopPanel({ userRole, isDarkMode }) {
+  const navigate = useNavigate();
+  const { data: priorities } = useFetch('/intelligence/orchestrate/instructor-priorities');
+  const role = (userRole || 'student').toLowerCase();
+
+  return (
+    <div className={`p-6 md:p-8 rounded-3xl border shadow-xl relative overflow-hidden transition-all duration-300 ${
+      isDarkMode ? 'bg-gradient-to-br from-[#0F172A] via-[#1E1B4B]/80 to-[#0B1120] border-cyan-500/30' : 'bg-gradient-to-r from-cyan-50 via-white to-indigo-50 border-cyan-200'
+    }`}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="space-y-1">
+          <span className="px-3 py-1 rounded-full text-xs font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 uppercase tracking-widest flex items-center gap-1.5 w-fit">
+            <Zap className="w-3.5 h-3.5" /> EDOT Living Intelligence Loop
+          </span>
+          <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            {role === 'instructor' ? "👨‍🏫 Today's Teaching Priorities" :
+             role === 'parent' ? '👨‍👩‍👧 Your Student Today' :
+             role === 'sponsor' ? '🤝 Cohort Impact Overview' :
+             role === 'admin' ? '🏛️ Platform Ecosystem Health' :
+             '🌐 Continuous Learning Pulse'}
+          </h3>
+        </div>
+      </div>
+
+      {role === 'instructor' ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-rose-950/30 border-rose-500/30 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+              <span className="text-xs font-extrabold uppercase tracking-wider block mb-1">🔴 Need Attention</span>
+              <div className="text-3xl font-black">{priorities?.redCount || 3} Learners</div>
+              <p className="text-xs mt-1 opacity-90">Progress slowed; practice suggested.</p>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-amber-950/30 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+              <span className="text-xs font-extrabold uppercase tracking-wider block mb-1">🟡 Reduced Activity</span>
+              <div className="text-3xl font-black">{priorities?.yellowCount || 8} Learners</div>
+              <p className="text-xs mt-1 opacity-90">Low study streak this week.</p>
+            </div>
+
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+              <span className="text-xs font-extrabold uppercase tracking-wider block mb-1">🟢 Progressing Well</span>
+              <div className="text-3xl font-black">{priorities?.greenCount || 42} Learners</div>
+              <p className="text-xs mt-1 opacity-90">Consistent learning momentum.</p>
+            </div>
+          </div>
+
+          <div className={`p-5 rounded-2xl border flex items-center justify-between gap-4 ${isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'}`}>
+            <div>
+              <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider block">Primary Recommendation</span>
+              <h4 className={`text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Review 3 learners needing support today</h4>
+              <p className="text-xs text-slate-400">AI Mentor already provided practice; instructor follow-up recommended.</p>
+            </div>
+            <button type="button" onClick={() => navigate('/dashboard/intelligence/support-needed')}
+              className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs transition-all shadow-md">
+              Review Learners
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+            <span className="text-xs font-bold text-slate-400 block mb-1">Ecosystem Status</span>
+            <div className="text-2xl font-black text-emerald-400">🟢 Active & Learning</div>
+            <p className="text-[11px] text-slate-400 mt-1">Real-time intelligence active</p>
+          </div>
+          <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+            <span className="text-xs font-bold text-slate-400 block mb-1">Unified Context</span>
+            <div className="text-2xl font-black text-cyan-400">Text • Voice • Video</div>
+            <p className="text-[11px] text-slate-400 mt-1">Continuous conversation memory</p>
+          </div>
+          <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'}`}>
+            <span className="text-xs font-bold text-slate-400 block mb-1">Anti-Spam Filter</span>
+            <div className="text-2xl font-black text-indigo-400">Protected</div>
+            <p className="text-[11px] text-slate-400 mt-1">No alert fatigue or spam</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -227,6 +696,15 @@ function HubLanding({ role, isDarkMode, user }) {
 
   return (
     <div className="space-y-8">
+      {/* EDOT Universal Role Intelligence Ecosystem Core Panel */}
+      <UniversalRoleIntelligenceEcosystemPanel userRole={role} isDarkMode={isDarkMode} />
+
+      {/* EDOT Living Intelligence Loop Panel */}
+      <LivingIntelligenceLoopPanel userRole={role} isDarkMode={isDarkMode} />
+
+      {/* Relationship Intelligence & Communication Ecosystem Panel */}
+      <RelationshipIntelligenceHubPanel userRole={role} isDarkMode={isDarkMode} />
+
       {/* Primary Next Best Step highlight */}
       <div className={`p-8 rounded-3xl border relative overflow-hidden shadow-2xl ${isDarkMode ? 'bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0B1120] border-amber-500/30' : 'bg-gradient-to-r from-amber-50 via-white to-orange-50 border-amber-200'}`}>
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />

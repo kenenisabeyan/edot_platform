@@ -68,6 +68,27 @@ import {
   getEcosystemSummary
 } from '../src/intelligence/adaptive/closedLoopAdaptationEngine.js';
 import {
+  resolveUserRelationships,
+  verifyCommunicationPermission,
+  verifyIntelligencePermission
+} from '../src/intelligence/relationship/relationshipIntelligenceResolver.js';
+import { createVoiceCommunicationSession } from '../src/intelligence/communication/voiceCommunicationProvider.js';
+import { createVideoSupportSession } from '../src/intelligence/communication/videoCommunicationProvider.js';
+import { logAuditEvent } from '../src/intelligence/audit/auditLogService.js';
+import {
+  processIntelligenceEvent,
+  getInstructorTeachingPriorities
+} from '../src/intelligence/orchestration/edotIntelligenceOrchestrator.js';
+import {
+  recordConversationTurn,
+  getUnifiedConversationContext
+} from '../src/intelligence/memory/conversationIntelligenceMemoryService.js';
+import { getRoleIntelligenceOverview } from '../src/intelligence/role/roleIntelligenceExperienceService.js';
+import { getStudentIntelligenceStatus } from '../src/intelligence/status/studentStatusIntelligenceService.js';
+import { executeRoleAwareAiChat } from '../src/intelligence/ai/roleAssistantService.js';
+import { executeClosedLoopAction } from '../src/intelligence/action/closedLoopActionEngine.js';
+import { resolveIntelligenceVisibility, assertPrivateAIChatAccess } from '../src/intelligence/privacy/intelligenceVisibilityResolver.js';
+import {
   getKnowledgeNodeById,
   getKnowledgeNodes
 } from '../src/intelligence/knowledge/knowledgeGraphService.js';
@@ -1660,11 +1681,208 @@ router.post('/personal-learning/recalculate', protect, checkNotBlocked, async (r
       return res.status(403).json({ success: false, message: 'Forbidden: Students can only recalculate their own plan.' });
     }
 
-    const planResult = await getOrUpdateLearningPlan(studentId, courseId);
-    return res.json({ success: true, data: planResult });
+/**
+ * GET /api/intelligence/universal-role-hub
+ * 
+ * EDOT Universal Role Intelligence Ecosystem Endpoint.
+ * Resolves role-specific, database-driven, privacy-protected intelligence answering:
+ *   1. What is happening? (Clear Status)
+ *   2. Why does it matter? (Understandable Explanation)
+ *   3. What should I do next? (Recommended Action)
+ * 
+ * Supports role query parameter for Admin multi-role previews (?role=student|instructor|admin|parent|sponsor).
+ */
+router.get('/universal-role-hub', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const requestedRole = req.query.role || null;
+    const intelligence = await getUniversalRoleIntelligence(req.user, requestedRole);
+    return res.json({ success: true, data: intelligence });
   } catch (error) {
-    console.error('Recalculate recommendation error:', error);
+    console.error('Universal Role Intelligence Endpoint Error:', error);
     const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message || 'Failed to resolve Universal Role Intelligence' });
+  }
+});
+
+/**
+ * GET /api/intelligence/role-overview
+ * Orchestrated central role intelligence overview (Part 1).
+ */
+router.get('/role-overview', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const requestedRole = req.query.role || req.user.role;
+    const overview = await getRoleIntelligenceOverview({ userId: req.user.id, role: requestedRole });
+    return res.json({ success: true, data: overview });
+  } catch (error) {
+    console.error('Role Overview Endpoint Error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/student-status/:studentId
+ * Universal student status resolver (Part 7).
+ */
+router.get('/student-status/:studentId', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const studentId = req.params.studentId;
+    const status = await getStudentIntelligenceStatus({
+      studentId,
+      viewerId: req.user.id,
+      viewerRole: req.user.role
+    });
+    return res.json({ success: true, data: status });
+  } catch (error) {
+    console.error('Student Status Endpoint Error:', error);
+    const status = error.statusCode || 500;
+/**
+ * POST /api/intelligence/role-ai/chat
+ * Role-aware multimodal AI conversation engine endpoint.
+ */
+router.post('/role-ai/chat', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { message, modality, targetStudentId } = req.body;
+    const response = await executeRoleAwareAiChat({
+      userId: req.user.id,
+      role: req.user.role,
+      message,
+      modality: modality || 'TEXT',
+      targetStudentId
+    });
+    return res.json({ success: true, data: response });
+  } catch (error) {
+    console.error('Role AI Chat Endpoint Error:', error);
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message || 'Failed to execute Role AI Chat' });
+  }
+});
+
+/**
+ * GET /api/intelligence/relationships
+ * Resolves active Admin-managed relationships for current user.
+ */
+router.get('/relationships', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const relationships = await resolveUserRelationships(req.user.id);
+    return res.json({ success: true, data: relationships });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/communication/verify
+ * Verifies communication permission between current user and target receiver.
+ */
+router.post('/communication/verify', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { receiverId, conversationType } = req.body;
+    const verification = await verifyCommunicationPermission({
+      senderId: req.user.id,
+      receiverId,
+      conversationType
+    });
+    return res.json({ success: true, data: verification });
+  } catch (error) {
+    const status = error.statusCode || 403;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/communication/voice/session
+ * Creates an authorized real-time voice call session.
+ */
+router.post('/communication/voice/session', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { receiverId, callType } = req.body;
+    const voiceSession = await createVoiceCommunicationSession({
+      senderId: req.user.id,
+      receiverId,
+      callType
+    });
+    await logAuditEvent({ eventType: 'COMMUNICATION_STARTED', actorId: req.user.id, targetId: receiverId, resource: 'VOICE_SESSION' });
+    return res.json({ success: true, data: voiceSession });
+  } catch (error) {
+    const status = error.statusCode || 403;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/orchestrate/event
+ * Central real-time intelligence event trigger endpoint.
+ */
+router.post('/orchestrate/event', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { eventType, courseId, metadata } = req.body;
+    const result = await processIntelligenceEvent({
+      eventType,
+      userId: req.user.id,
+      courseId,
+      metadata
+    });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/orchestrate/instructor-priorities
+ * Teaching priorities endpoint for instructors.
+ */
+router.get('/orchestrate/instructor-priorities', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const priorities = await getInstructorTeachingPriorities(req.user.id);
+    return res.json({ success: true, data: priorities });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/intelligence/memory/conversation/turn
+ * Records a conversation turn across Text, Voice, or Video modalities.
+ */
+router.post('/memory/conversation/turn', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { conversationId, modality, topic, content } = req.body;
+    const turn = await recordConversationTurn({
+      userId: req.user.id,
+      conversationId,
+      modality,
+      topic,
+      content,
+      senderRole: (req.user.role || 'STUDENT').toUpperCase()
+    });
+    return res.json({ success: true, data: turn });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    return res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/intelligence/memory/conversation/:id
+ * Retrieves unified multi-modality conversation memory context.
+ */
+router.get('/memory/conversation/:id', protect, checkNotBlocked, async (req, res) => {
+  try {
+    const { targetStudentId } = req.query;
+    const context = await getUnifiedConversationContext({
+      viewerId: req.user.id,
+      viewerRole: req.user.role,
+      studentId: targetStudentId || req.user.id,
+      conversationId: req.params.id
+    });
+    return res.json({ success: true, data: context });
+  } catch (error) {
+    const status = error.statusCode || 403;
     return res.status(status).json({ success: false, message: error.message });
   }
 });
